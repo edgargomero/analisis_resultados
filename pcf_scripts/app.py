@@ -18,6 +18,10 @@ from dashboard_comparacion import DashboardValidacionCEAPSI
 import subprocess
 import json
 from datetime import datetime
+import io
+import tempfile
+import pandas as pd
+import os
 
 # Configuración de la página principal
 st.set_page_config(
@@ -27,13 +31,212 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def mostrar_seccion_carga_archivos():
+    """Sección para cargar archivos de datos manualmente"""
+    
+    st.sidebar.markdown("### 📁 Cargar Datos")
+    
+    # Mostrar estado actual
+    if st.session_state.datos_cargados:
+        st.sidebar.success("✅ Datos cargados correctamente")
+        
+        # Botón para limpiar datos
+        if st.sidebar.button("🗑️ Limpiar Datos", use_container_width=True):
+            st.session_state.archivo_datos = None
+            st.session_state.datos_cargados = False
+            st.rerun()
+    else:
+        st.sidebar.warning("⚠️ No hay datos cargados")
+    
+    # Uploader de archivos
+    archivo_subido = st.sidebar.file_uploader(
+        "Seleccionar archivo de llamadas:",
+        type=['csv', 'xlsx', 'xls'],
+        help="Formatos soportados: CSV, Excel (.xlsx, .xls)"
+    )
+    
+    if archivo_subido is not None:
+        if st.sidebar.button("🚀 Procesar Archivo", use_container_width=True, type="primary"):
+            procesar_archivo_subido(archivo_subido)
+    
+    # Información sobre el formato esperado
+    with st.sidebar.expander("📝 Formato de Datos Esperado"):
+        st.markdown("""
+        **Columnas requeridas:**
+        - `FECHA`: Fecha y hora de la llamada
+        - `TELEFONO`: Número de teléfono
+        - `SENTIDO`: 'in' (entrante) o 'out' (saliente)
+        - `ATENDIDA`: 'Si' o 'No'
+        
+        **Formato de fecha esperado:**
+        - DD-MM-YYYY HH:MM:SS
+        - Ejemplo: 02-01-2023 08:08:07
+        
+        **Separador CSV:** Punto y coma (;)
+        
+        **Archivo de ejemplo:**
+        Descarga un archivo de ejemplo para probar el sistema.
+        """)
+        
+        # Botón para descargar ejemplo
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'ejemplo_datos_llamadas.csv'), 'r', encoding='utf-8') as f:
+                ejemplo_csv = f.read()
+            
+            st.download_button(
+                "📎 Descargar Ejemplo CSV",
+                data=ejemplo_csv,
+                file_name="ejemplo_datos_llamadas.csv",
+                mime="text/csv",
+                help="Archivo de ejemplo con el formato correcto"
+            )
+        except:
+            pass
+    
+    st.sidebar.markdown("---")
+
+def procesar_archivo_subido(archivo_subido):
+    """Procesa el archivo subido y lo guarda temporalmente"""
+    
+    try:
+        with st.spinner("Procesando archivo..."):
+            # Leer el archivo según su tipo
+            if archivo_subido.name.endswith('.csv'):
+                # Intentar diferentes encodings para CSV
+                contenido_bytes = archivo_subido.read()
+                
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        contenido_str = contenido_bytes.decode(encoding)
+                        df = pd.read_csv(io.StringIO(contenido_str), sep=';')
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    st.error("❌ No se pudo decodificar el archivo CSV")
+                    return
+            
+            elif archivo_subido.name.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(archivo_subido)
+            
+            # Validar columnas requeridas
+            columnas_requeridas = ['FECHA', 'TELEFONO']
+            columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
+            
+            if columnas_faltantes:
+                st.error(f"❌ Columnas faltantes: {', '.join(columnas_faltantes)}")
+                st.info("📝 Columnas encontradas: " + ", ".join(df.columns.tolist()))
+                return
+            
+            # Validar que hay datos
+            if len(df) == 0:
+                st.error("❌ El archivo está vacío")
+                return
+            
+            # Guardar en sesión temporal
+            archivo_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8')
+            df.to_csv(archivo_temp.name, sep=';', index=False, encoding='utf-8')
+            archivo_temp.close()
+            
+            # Actualizar estado
+            st.session_state.archivo_datos = archivo_temp.name
+            st.session_state.datos_cargados = True
+            
+            st.success(f"✅ Archivo procesado exitosamente: {len(df):,} registros cargados")
+            
+            # Mostrar resumen de datos
+            st.info(f"📊 **Resumen del archivo:**")
+            st.info(f"- **Registros**: {len(df):,}")
+            st.info(f"- **Columnas**: {len(df.columns)}")
+            st.info(f"- **Período**: Detectando...")
+            
+            # Intentar detectar rango de fechas
+            if 'FECHA' in df.columns:
+                try:
+                    fechas = pd.to_datetime(df['FECHA'], errors='coerce')
+                    fechas_validas = fechas.dropna()
+                    if len(fechas_validas) > 0:
+                        fecha_min = fechas_validas.min()
+                        fecha_max = fechas_validas.max()
+                        st.info(f"- **Rango de fechas**: {fecha_min.date()} a {fecha_max.date()}")
+                except:
+                    st.warning("⚠️ No se pudo procesar las fechas")
+            
+            st.rerun()
+    
+    except Exception as e:
+        st.error(f"❌ Error procesando archivo: {str(e)}")
+        st.info("💡 Verifica que el archivo tenga el formato correcto")
+
+def crear_script_auditoria_temporal(ruta_archivo):
+    """Crea un script temporal de auditoría que usa el archivo cargado"""
+    
+    script_content = f'''
+#!/usr/bin/env python3
+# Script temporal de auditoría generado automáticamente
+
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from auditoria_datos_llamadas import AuditoriaLlamadasAlodesk
+
+def main():
+    # Usar archivo cargado manualmente
+    archivo_llamadas = r"{ruta_archivo}"
+    output_path = os.path.dirname(__file__)
+    
+    print("🔍 INICIANDO AUDITORÍA DE DATOS CARGADOS")
+    print("=" * 60)
+    
+    # Crear auditor
+    auditor = AuditoriaLlamadasAlodesk(archivo_llamadas)
+    
+    # Ejecutar auditoría completa
+    if auditor.cargar_y_limpiar_datos():
+        reporte = auditor.generar_reporte_diagnostico(output_path)
+        
+        print("\n🎯 RESUMEN EJECUTIVO:")
+        print(f"   📊 Total registros: {{len(auditor.df)}}")
+        
+        if 'recomendaciones' in reporte:
+            print(f"   ⚠️ Recomendaciones: {{len(reporte['recomendaciones'])}}")
+            
+            for rec in reporte['recomendaciones']:
+                print(f"   🔧 {{rec['tipo']}}: {{rec['problema']}}")
+        
+        print(f"\n📄 Reporte completo disponible")
+        
+    else:
+        print("❌ No se pudo completar la auditoría")
+
+if __name__ == "__main__":
+    main()
+'''
+    
+    # Guardar script temporal
+    script_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8')
+    script_temp.write(script_content)
+    script_temp.close()
+    
+    return script_temp.name
+
 def main():
     """Función principal de la aplicación Streamlit"""
+    
+    # Inicializar estado de sesión
+    if 'archivo_datos' not in st.session_state:
+        st.session_state.archivo_datos = None
+    if 'datos_cargados' not in st.session_state:
+        st.session_state.datos_cargados = False
     
     # Sidebar para navegación
     st.sidebar.title("📞 CEAPSI - Sistema PCF")
     st.sidebar.markdown("### Precision Call Forecast")
     st.sidebar.markdown("---")
+    
+    # Sección de carga de archivos
+    mostrar_seccion_carga_archivos()
     
     # Opciones del menú
     opciones_menu = {
@@ -57,21 +260,29 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Estado del Sistema")
     
-    # Verificar archivos de datos
-    base_path = Path(__file__).parent.parent
-    archivo_datos = base_path / "backups" / "alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
-    
-    if archivo_datos.exists():
+    # Verificar datos cargados
+    if st.session_state.datos_cargados:
         st.sidebar.success("✅ Datos de llamadas disponibles")
+        
+        # Mostrar información del archivo cargado
+        try:
+            df = pd.read_csv(st.session_state.archivo_datos, sep=';')
+            st.sidebar.info(f"📊 {len(df):,} registros cargados")
+        except:
+            st.sidebar.warning("⚠️ Error leyendo datos")
     else:
-        st.sidebar.error("❌ Datos de llamadas no encontrados")
+        st.sidebar.error("❌ No hay datos cargados")
+        st.sidebar.info("📁 Sube un archivo para comenzar")
     
-    # Verificar modelos entrenados
-    archivos_modelos = list(Path(__file__).parent.parent.glob("predicciones_multimodelo_*.json"))
-    if archivos_modelos:
-        st.sidebar.success(f"✅ {len(archivos_modelos)} modelos disponibles")
+    # Verificar modelos entrenados (solo si hay datos cargados)
+    if st.session_state.datos_cargados:
+        archivos_modelos = list(Path(__file__).parent.parent.glob("predicciones_multimodelo_*.json"))
+        if archivos_modelos:
+            st.sidebar.success(f"✅ {len(archivos_modelos)} modelos disponibles")
+        else:
+            st.sidebar.warning("⚠️ No hay modelos entrenados")
     else:
-        st.sidebar.warning("⚠️ No hay modelos entrenados")
+        st.sidebar.info("🤖 Modelos: Pendiente de datos")
     
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"🕐 **Actualizado:** {datetime.now().strftime('%H:%M:%S')}")
@@ -102,8 +313,17 @@ def mostrar_inicio():
     ### 🎯 Bienvenido al Sistema de Predicción de Llamadas
     
     Este sistema utiliza inteligencia artificial avanzada para predecir el volumen de llamadas 
-    en su call center, optimizando la asignación de recursos y mejorando la experiencia del cliente.
+    en su call center. **Sube tu archivo de datos de llamadas** para comenzar el análisis 
+    y optimizar la asignación de recursos.
+    
+    📁 **¡Empieza subiendo tu archivo en el sidebar!**
     """)
+    
+    # Mostrar estado de carga
+    if st.session_state.datos_cargados:
+        st.success("✅ ¡Datos cargados! Ya puedes usar todos los módulos del sistema.")
+    else:
+        st.info("🔄 Esperando datos... Sube tu archivo CSV o Excel en la sección 'Cargar Datos' del sidebar.")
     
     # Métricas principales
     col1, col2, col3, col4 = st.columns(4)
@@ -198,7 +418,21 @@ def mostrar_inicio():
 
 def mostrar_dashboard():
     """Ejecuta el dashboard de validación"""
+    
+    if not st.session_state.datos_cargados:
+        st.warning("⚠️ No hay datos cargados")
+        st.info("📁 Por favor, sube un archivo de datos en la sección 'Cargar Datos' del sidebar")
+        
+        # Mostrar preview de cómo se vería el dashboard
+        st.markdown("### 🔍 Vista Previa del Dashboard")
+        st.image("https://via.placeholder.com/800x400/f0f2f6/333?text=Dashboard+de+Validaci%C3%B3n", 
+                caption="El dashboard mostrará gráficas de atención, comparación de modelos y alertas una vez que subas los datos")
+        return
+    
+    # Crear dashboard personalizado con datos cargados
     dashboard = DashboardValidacionCEAPSI()
+    dashboard.base_path = Path(st.session_state.archivo_datos).parent
+    dashboard.archivo_datos_manual = st.session_state.archivo_datos
     dashboard.ejecutar_dashboard()
 
 def mostrar_auditoria():
@@ -206,6 +440,11 @@ def mostrar_auditoria():
     
     st.title("🔍 Auditoría de Datos de Llamadas")
     st.markdown("### Análisis Profundo de Calidad y Patrones")
+    
+    if not st.session_state.datos_cargados:
+        st.warning("⚠️ No hay datos cargados para auditar")
+        st.info("📁 Sube un archivo de datos primero")
+        return
     
     st.info("📋 Este módulo analiza la calidad de los datos de llamadas y detecta patrones temporales.")
     
@@ -225,14 +464,21 @@ def mostrar_auditoria():
         if st.button("🚀 Ejecutar Auditoría", use_container_width=True, type="primary"):
             with st.spinner("Ejecutando auditoría de datos..."):
                 try:
+                    # Crear script temporal que use el archivo cargado
+                    script_temp = crear_script_auditoria_temporal(st.session_state.archivo_datos)
+                    
                     # Ejecutar script de auditoría
                     result = subprocess.run(
-                        [sys.executable, "auditoria_datos_llamadas.py"],
+                        [sys.executable, script_temp],
                         cwd=Path(__file__).parent,
                         capture_output=True,
                         text=True,
                         timeout=300
                     )
+                    
+                    # Limpiar archivo temporal
+                    if os.path.exists(script_temp):
+                        os.remove(script_temp)
                     
                     if result.returncode == 0:
                         st.success("✅ Auditoría completada exitosamente")
@@ -303,6 +549,11 @@ def mostrar_segmentacion():
     
     st.title("🔀 Segmentación de Llamadas")
     st.markdown("### Clasificación Automática por Tipo")
+    
+    if not st.session_state.datos_cargados:
+        st.warning("⚠️ No hay datos cargados para segmentar")
+        st.info("📁 Sube un archivo de datos primero")
+        return
     
     st.info("📋 Este módulo separa automáticamente las llamadas entrantes de las salientes.")
     

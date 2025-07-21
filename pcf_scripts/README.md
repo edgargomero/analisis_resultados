@@ -2,6 +2,8 @@
 
 Sistema completo de predicción de llamadas para call center usando inteligencia artificial y análisis avanzado de datos.
 
+📁 **¡Sube tu propio archivo de datos de llamadas y comienza el análisis inmediatamente!**
+
 ## 🎯 Características Principales
 
 - **🤖 Múltiples Modelos de IA**: ARIMA, Prophet, Random Forest, Gradient Boosting
@@ -33,12 +35,15 @@ Sistema completo de predicción de llamadas para call center usando inteligencia
    pip install -r requirements.txt
    ```
 
-3. **Configurar datos**
+3. **¡Listo para usar!**
    
-   Asegúrate de tener el archivo de datos en la ruta correcta:
-   ```
-   ../backups/alodesk_reporte_llamadas_jan2023_to_jul2025.csv
-   ```
+   La aplicación permite subir archivos manualmente. No necesitas configurar rutas específicas.
+   
+   **Formatos soportados:**
+   - CSV (con separador punto y coma)
+   - Excel (.xlsx, .xls)
+   
+   **Archivo de ejemplo incluido:** `ejemplo_datos_llamadas.csv`
 
 ### Ejecución
 
@@ -78,12 +83,42 @@ pcf_scripts/
     └── config.toml                    # Configuración de Streamlit
 ```
 
+## 📁 Formato de Datos Esperado
+
+### Columnas Requeridas
+
+| Columna | Descripción | Ejemplo |
+|---------|-------------|----------|
+| **FECHA** | Fecha y hora de la llamada | 02-01-2023 08:08:07 |
+| **TELEFONO** | Número de teléfono | +56912345678 |
+| **SENTIDO** | Tipo de llamada | 'in' (entrante) o 'out' (saliente) |
+| **ATENDIDA** | Estado de atención | 'Si' o 'No' |
+
+### Formato del Archivo
+
+- **Separador**: Punto y coma (;)
+- **Encoding**: UTF-8, Latin-1, o CP1252
+- **Formato de fecha**: DD-MM-YYYY HH:MM:SS
+- **Extensiones**: .csv, .xlsx, .xls
+
+### Ejemplo de Archivo CSV
+
+```csv
+FECHA;TELEFONO;SENTIDO;ATENDIDA;STATUS
+02-01-2023 08:08:07;+56912345678;in;Si;ANSWERED
+02-01-2023 08:15:23;+56987654321;out;No;NO_ANSWER
+02-01-2023 08:22:45;+56923456789;in;Si;ANSWERED
+```
+
+📎 **Descarga el archivo `ejemplo_datos_llamadas.csv` desde la aplicación para ver el formato completo.**
+
 ## 🎮 Guía de Uso
 
 ### 1. 🏠 Página de Inicio
 - Resumen del sistema y métricas principales
 - Enlaces rápidos a los módulos
 - Estado actual del sistema
+- **📁 Sección de carga de archivos en el sidebar**
 
 ### 2. 📊 Dashboard de Validación
 - **Análisis de Atención**: Gráficas de los últimos 15, 30 y 90 días

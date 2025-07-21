@@ -27,6 +27,7 @@ class DashboardValidacionCEAPSI:
     
     def __init__(self):
         self.base_path = self._obtener_ruta_resultados()
+        self.archivo_datos_manual = None  # Para datos subidos manualmente
         
     def _obtener_ruta_resultados(self):
         """Obtiene la carpeta de resultados más reciente"""
@@ -80,10 +81,14 @@ class DashboardValidacionCEAPSI:
     
     @st.cache_data(ttl=300)
     def cargar_datos_llamadas_completos(_self):
-        """Carga datos completos de llamadas desde el archivo original"""
+        """Carga datos completos de llamadas desde el archivo original o subido"""
         try:
-            # Ruta al archivo principal de llamadas
-            archivo_llamadas = f"{_self.base_path}/backups/alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
+            # Usar archivo manual si está disponible
+            if _self.archivo_datos_manual:
+                archivo_llamadas = _self.archivo_datos_manual
+            else:
+                # Ruta al archivo principal de llamadas (fallback)
+                archivo_llamadas = f"{_self.base_path}/backups/alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
             
             # Intentar diferentes encodings
             for encoding in ['utf-8', 'latin-1', 'cp1252']:
