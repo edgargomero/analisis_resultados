@@ -483,6 +483,128 @@ def procesar_archivo_subido(archivo_subido):
         logger.error(f"Error procesando archivo: {e}")
         st.error(f"Error procesando archivo: {str(e)}")
 
+def procesar_archivo_usuarios(archivo_usuarios):
+    """Procesa el archivo de usuarios con cargos/roles"""
+    try:
+        logger.info(f"Iniciando procesamiento de usuarios: {archivo_usuarios.name}")
+        
+        # Leer archivo según el tipo
+        if archivo_usuarios.type == "text/csv" or archivo_usuarios.name.endswith('.csv'):
+            bytes_data = archivo_usuarios.read()
+            for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                try:
+                    content = bytes_data.decode(encoding)
+                    df = pd.read_csv(io.StringIO(content), sep=';')
+                    break
+                except Exception:
+                    continue
+        else:
+            df = pd.read_excel(archivo_usuarios)
+        
+        # Validar estructura mínima del archivo
+        columnas_esperadas = ['TELEFONO', 'USUARIO', 'CARGO']
+        
+        # Mapear columnas comunes
+        mapeo_columnas = {}
+        for col_esperada in columnas_esperadas:
+            for col_disponible in df.columns:
+                if col_esperada in col_disponible.upper():
+                    mapeo_columnas[col_disponible] = col_esperada
+                    break
+                elif col_esperada == 'TELEFONO' and any(x in col_disponible.upper() for x in ['TEL', 'PHONE', 'NUMERO']):
+                    mapeo_columnas[col_disponible] = col_esperada
+                    break
+                elif col_esperada == 'USUARIO' and any(x in col_disponible.upper() for x in ['USER', 'NAME', 'NOMBRE', 'AGENTE']):
+                    mapeo_columnas[col_disponible] = col_esperada
+                    break  
+                elif col_esperada == 'CARGO' and any(x in col_disponible.upper() for x in ['ROL', 'ROLE', 'PUESTO', 'POSITION']):
+                    mapeo_columnas[col_disponible] = col_esperada
+                    break
+        
+        # Renombrar columnas
+        df = df.rename(columns=mapeo_columnas)
+        
+        # Verificar columnas críticas
+        if 'TELEFONO' not in df.columns:
+            st.error("❌ Columna TELEFONO no encontrada. Asegúrate de que existe una columna con teléfonos.")
+            return
+        
+        # Si no hay USUARIO, usar índice
+        if 'USUARIO' not in df.columns:
+            df['USUARIO'] = df.index.map(lambda x: f'Usuario_{x+1}')
+            st.info("ℹ️ Columna USUARIO no encontrada. Usando numeración automática.")
+        
+        # Si no hay CARGO, usar valor por defecto
+        if 'CARGO' not in df.columns:
+            df['CARGO'] = 'Agente'
+            st.info("ℹ️ Columna CARGO no encontrada. Usando 'Agente' por defecto.")
+        
+        # Limpiar y normalizar datos
+        df['TELEFONO'] = df['TELEFONO'].astype(str).str.strip()
+        df['USUARIO'] = df['USUARIO'].astype(str).str.strip()
+        df['CARGO'] = df['CARGO'].astype(str).str.strip()
+        
+        # Filtrar registros válidos
+        df = df[df['TELEFONO'].str.len() > 5]  # Teléfonos con al menos 6 dígitos
+        df = df.dropna(subset=['TELEFONO'])
+        
+        if len(df) == 0:
+            st.error("❌ No hay datos válidos después de la limpieza.")
+            return
+        
+        # Actualizar session state
+        st.session_state.archivo_usuarios = archivo_usuarios.name
+        st.session_state.df_usuarios = df
+        st.session_state.usuarios_cargados = True
+        
+        # Mostrar resumen
+        st.success(f"✅ Usuarios cargados: {len(df)} registros")
+        
+        # Mostrar estadísticas básicas
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("👥 Total Usuarios", len(df))
+        
+        with col2:
+            cargos_unicos = df['CARGO'].nunique()
+            st.metric("🏢 Cargos Diferentes", cargos_unicos)
+        
+        with col3:
+            if len(df) > 0:
+                cargo_principal = df['CARGO'].value_counts().index[0]
+                st.metric("🔝 Cargo Principal", cargo_principal)
+        
+        # Mostrar preview de datos
+        st.subheader("👀 Vista Previa de Datos de Usuarios")
+        st.dataframe(df.head(10), use_container_width=True)
+        
+        # Distribución por cargos
+        if len(df) > 0:
+            st.subheader("📊 Distribución por Cargos")
+            distribuzione_cargos = df['CARGO'].value_counts()
+            
+            fig_cargos = go.Figure(data=[
+                go.Bar(
+                    x=distribuzione_cargos.index,
+                    y=distribuzione_cargos.values,
+                    marker_color='lightblue'
+                )
+            ])
+            
+            fig_cargos.update_layout(
+                title='Distribución de Usuarios por Cargo',
+                xaxis_title='Cargo',
+                yaxis_title='Número de Usuarios',
+                height=400
+            )
+            
+            st.plotly_chart(fig_cargos, use_container_width=True)
+        
+    except Exception as e:
+        logger.error(f"Error procesando archivo de usuarios: {e}")
+        st.error(f"Error procesando archivo de usuarios: {str(e)}")
+
 def mostrar_seccion_carga_archivos():
     """Sección para cargar archivos de datos"""
     st.sidebar.markdown("### 📁 Cargar Datos")
@@ -511,6 +633,38 @@ def mostrar_seccion_carga_archivos():
     
     if archivo_subido is not None:
         procesar_archivo_subido(archivo_subido)
+    
+    # Sección de datos de usuarios/cargos
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 👥 Datos de Usuarios")
+    
+    if 'usuarios_cargados' not in st.session_state:
+        st.session_state.usuarios_cargados = False
+        st.session_state.archivo_usuarios = None
+        st.session_state.df_usuarios = None
+    
+    if st.session_state.usuarios_cargados:
+        st.sidebar.success("✅ Usuarios cargados")
+        num_usuarios = len(st.session_state.df_usuarios) if st.session_state.df_usuarios is not None else 0
+        st.sidebar.info(f"👥 {num_usuarios} usuarios")
+        
+        if st.sidebar.button("🗑️ Limpiar Usuarios", use_container_width=True):
+            st.session_state.usuarios_cargados = False
+            st.session_state.archivo_usuarios = None
+            st.session_state.df_usuarios = None
+            st.rerun()
+    else:
+        st.sidebar.warning("⚠️ No hay datos de usuarios")
+    
+    archivo_usuarios = st.sidebar.file_uploader(
+        "Cargar datos de usuarios:",
+        type=['csv', 'xlsx', 'xls'],
+        help="Archivo con datos de usuarios, cargos y teléfonos",
+        key="uploader_usuarios"
+    )
+    
+    if archivo_usuarios is not None:
+        procesar_archivo_usuarios(archivo_usuarios)
 
 def mostrar_dashboard():
     """Mostrar dashboard con resultados del pipeline"""
@@ -594,7 +748,7 @@ def main():
         
         pagina = st.selectbox(
             "Seleccionar módulo:",
-            ["🏠 Inicio", "📊 Dashboard", "ℹ️ Información"],
+            ["🏠 Inicio", "📊 Dashboard", "👥 Análisis de Usuarios", "ℹ️ Información"],
             index=0
         )
         
@@ -611,6 +765,8 @@ def main():
             mostrar_dashboard()
         else:
             st.warning("⚠️ Ejecuta el pipeline primero para ver el dashboard")
+    elif pagina == "👥 Análisis de Usuarios":
+        mostrar_analisis_usuarios()
     elif pagina == "ℹ️ Información":
         st.title("ℹ️ Información del Sistema")
         st.markdown("""
@@ -630,6 +786,197 @@ def main():
         - `SENTIDO`: 'in' (entrante) o 'out' (saliente)
         - `ATENDIDA`: 'Si' o 'No'
         """)
+
+def mostrar_analisis_usuarios():
+    """Página de análisis de usuarios y performance por cargos"""
+    
+    st.title("👥 Análisis de Usuarios y Performance")
+    st.markdown("### Análisis de Productividad por Cargo y Usuario")
+    
+    # Verificar si hay datos de usuarios cargados
+    if not st.session_state.get('usuarios_cargados', False):
+        st.warning("⚠️ No hay datos de usuarios cargados")
+        st.info("💡 Carga un archivo de usuarios en el sidebar para comenzar el análisis")
+        
+        # Mostrar formato esperado
+        st.markdown("---")
+        st.subheader("📋 Formato Esperado del Archivo de Usuarios")
+        
+        ejemplo_usuarios = pd.DataFrame({
+            'TELEFONO': ['+56912345678', '+56987654321', '+56945612378'],
+            'USUARIO': ['Ana García', 'Carlos López', 'María Silva'],
+            'CARGO': ['Supervisor', 'Agente', 'Agente Senior']
+        })
+        
+        st.dataframe(ejemplo_usuarios, use_container_width=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Columnas requeridas:**")
+            st.markdown("- `TELEFONO`: Número de teléfono del usuario")
+            st.markdown("- `USUARIO`: Nombre del usuario/agente")
+            st.markdown("- `CARGO`: Rol o cargo del usuario")
+        
+        with col2:
+            st.markdown("**Columnas opcionales:**")
+            st.markdown("- `EMAIL`: Email del usuario")
+            st.markdown("- `TURNO`: Turno de trabajo")
+            st.markdown("- `FECHA_INGRESO`: Fecha de ingreso")
+        
+        return
+    
+    # Si hay datos de usuarios, continuar con el análisis
+    df_usuarios = st.session_state.df_usuarios
+    
+    st.success(f"✅ Analizando {len(df_usuarios)} usuarios")
+    
+    # Métricas generales
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("👥 Total Usuarios", len(df_usuarios))
+    
+    with col2:
+        cargos_unicos = df_usuarios['CARGO'].nunique()
+        st.metric("🏢 Cargos Diferentes", cargos_unicos)
+    
+    with col3:
+        if len(df_usuarios) > 0:
+            cargo_principal = df_usuarios['CARGO'].value_counts().index[0]
+            st.metric("🔝 Cargo Principal", cargo_principal)
+    
+    with col4:
+        # Si hay datos de llamadas, calcular productividad
+        if st.session_state.get('datos_cargados', False):
+            st.metric("📊 Con Datos", "Disponible")
+        else:
+            st.metric("📊 Sin Datos", "Llamadas")
+    
+    st.markdown("---")
+    
+    # Análisis por cargos
+    st.subheader("📊 Análisis por Cargos")
+    
+    # Distribución de cargos
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("#### Distribución de Usuarios por Cargo")
+        distribución_cargos = df_usuarios['CARGO'].value_counts()
+        
+        fig_pie = go.Figure(data=[go.Pie(
+            labels=distribución_cargos.index,
+            values=distribución_cargos.values,
+            hole=.3
+        )])
+        
+        fig_pie.update_layout(
+            title="Distribución por Cargos",
+            height=400
+        )
+        
+        st.plotly_chart(fig_pie, use_container_width=True)
+    
+    with col2:
+        st.markdown("#### Detalle por Cargo")
+        for cargo in distribución_cargos.index:
+            cantidad = distribución_cargos[cargo]
+            porcentaje = (cantidad / len(df_usuarios)) * 100
+            
+            st.metric(
+                f"👤 {cargo}", 
+                f"{cantidad} usuarios",
+                f"{porcentaje:.1f}%"
+            )
+    
+    # Si hay datos de llamadas, hacer análisis cruzado
+    if st.session_state.get('datos_cargados', False):
+        mostrar_analisis_cruzado_usuarios_llamadas(df_usuarios)
+    
+    # Tabla de usuarios
+    st.markdown("---")
+    st.subheader("📋 Detalle de Usuarios")
+    
+    # Filtros
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        cargos_disponibles = ['Todos'] + list(df_usuarios['CARGO'].unique())
+        cargo_filtro = st.selectbox("Filtrar por cargo:", cargos_disponibles)
+    
+    with col2:
+        buscar_usuario = st.text_input("Buscar usuario:", placeholder="Nombre del usuario")
+    
+    # Aplicar filtros
+    df_filtrado = df_usuarios.copy()
+    
+    if cargo_filtro != 'Todos':
+        df_filtrado = df_filtrado[df_filtrado['CARGO'] == cargo_filtro]
+    
+    if buscar_usuario:
+        df_filtrado = df_filtrado[
+            df_filtrado['USUARIO'].str.contains(buscar_usuario, case=False, na=False)
+        ]
+    
+    st.dataframe(df_filtrado, use_container_width=True)
+    
+    # Export de datos
+    if st.button("📥 Exportar Análisis de Usuarios", use_container_width=True):
+        try:
+            # Crear reporte de usuarios
+            reporte = {
+                'resumen_general': {
+                    'total_usuarios': len(df_usuarios),
+                    'cargos_diferentes': cargos_unicos,
+                    'cargo_principal': cargo_principal if len(df_usuarios) > 0 else None
+                },
+                'distribucion_cargos': distribución_cargos.to_dict(),
+                'usuarios_detalle': df_usuarios.to_dict('records')
+            }
+            
+            # Convertir a JSON y ofrecerlo para descarga
+            json_reporte = json.dumps(reporte, indent=2, ensure_ascii=False, default=str)
+            
+            st.download_button(
+                label="📊 Descargar Reporte JSON",
+                data=json_reporte,
+                file_name=f"reporte_usuarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
+            
+            # También CSV
+            csv_buffer = io.StringIO()
+            df_usuarios.to_csv(csv_buffer, index=False, sep=';')
+            
+            st.download_button(
+                label="📋 Descargar CSV",
+                data=csv_buffer.getvalue(),
+                file_name=f"usuarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+            
+        except Exception as e:
+            st.error(f"Error generando exportación: {e}")
+
+def mostrar_analisis_cruzado_usuarios_llamadas(df_usuarios):
+    """Análisis cruzado entre usuarios y datos de llamadas"""
+    
+    st.markdown("---")
+    st.subheader("📞 Análisis de Performance por Usuario")
+    
+    st.info("🔗 Análisis cruzado con datos de llamadas disponible")
+    
+    # Aquí se podría implementar lógica para cruzar datos de usuarios con llamadas
+    # Por ejemplo, matching por teléfono para ver productividad por usuario
+    
+    st.markdown("""
+    **💡 Próximas funcionalidades:**
+    - Productividad por usuario (llamadas por hora/día)
+    - Performance por cargo (tasas de atención, duración promedio)
+    - Ranking de usuarios más productivos
+    - Análisis de patrones por turno
+    - Identificación de usuarios con bajo rendimiento
+    """)
 
 if __name__ == "__main__":
     main()

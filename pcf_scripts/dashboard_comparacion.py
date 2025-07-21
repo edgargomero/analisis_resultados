@@ -29,6 +29,8 @@ class DashboardValidacionCEAPSI:
     def __init__(self):
         self.base_path = self._obtener_ruta_resultados()
         self.archivo_datos_manual = None  # Para datos subidos manualmente
+        self.archivo_usuarios = None  # Para datos de usuarios/cargos
+        self.df_usuarios = None  # DataFrame de usuarios cargado
         
     def _obtener_ruta_resultados(self):
         """Obtiene la carpeta de resultados más reciente"""
