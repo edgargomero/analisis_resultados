@@ -45,6 +45,13 @@ except ImportError as e:
     logger.warning(f"No se pudo importar dashboard_comparacion: {e}")
     DASHBOARD_AVAILABLE = False
 
+try:
+    from preparacion_datos import mostrar_preparacion_datos
+    PREP_DATOS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar preparacion_datos: {e}")
+    PREP_DATOS_AVAILABLE = False
+
 # Configuración de la página principal
 st.set_page_config(
     page_title="CEAPSI - Sistema PCF",
@@ -748,7 +755,7 @@ def main():
         
         pagina = st.selectbox(
             "Seleccionar módulo:",
-            ["🏠 Inicio", "📊 Dashboard", "👥 Análisis de Usuarios", "ℹ️ Información"],
+            ["🏠 Inicio", "📊 Dashboard", "🔧 Preparación de Datos", "👥 Análisis de Usuarios", "ℹ️ Información"],
             index=0
         )
         
@@ -765,6 +772,11 @@ def main():
             mostrar_dashboard()
         else:
             st.warning("⚠️ Ejecuta el pipeline primero para ver el dashboard")
+    elif pagina == "🔧 Preparación de Datos":
+        if PREP_DATOS_AVAILABLE:
+            mostrar_preparacion_datos()
+        else:
+            st.error("⚠️ Módulo de preparación de datos no disponible")
     elif pagina == "👥 Análisis de Usuarios":
         mostrar_analisis_usuarios()
     elif pagina == "ℹ️ Información":
