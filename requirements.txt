@@ -1,0 +1,58 @@
+# Requisitos del Sistema CEAPSI - Análisis y Forecasting
+
+## Dependencias Python - Análisis Actual
+pandas>=1.5.0
+numpy>=1.21.0
+openpyxl>=3.0.9
+matplotlib>=3.5.0
+
+## Dependencias Python - Sistema Forecasting
+prophet>=1.1.4
+scikit-learn>=1.1.0
+plotly>=5.10.0
+streamlit>=1.25.0
+
+## Dependencias Automatización
+schedule>=1.2.0
+python-crontab>=2.6.0
+
+## Dependencias Email/Notificaciones
+smtplib-ssl>=1.0.0
+
+## Dependencias Dashboard Web
+dash>=2.14.0
+dash-bootstrap-components>=1.4.0
+
+## Dependencias Visualización
+seaborn>=0.11.0
+plotly-express>=0.4.1
+
+## Dependencias Base de Datos (Producción)
+sqlalchemy>=1.4.0
+psycopg2-binary>=2.9.0
+pymongo>=4.0.0
+
+## Dependencias Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+## Dependencias Desarrollo
+jupyter>=1.0.0
+ipykernel>=6.15.0
+
+## Dependencias Exportación
+xlsxwriter>=3.0.0
+reportlab>=3.6.0
+
+## Instalación Rápida
+# pip install -r requirements.txt
+
+## Instalación para Desarrollo
+# pip install -r requirements.txt jupyter ipykernel pytest
+
+## Instalación Mínima (Solo Análisis)
+# pip install pandas numpy openpyxl matplotlib
+
+## Instalación Completa (Producción)
+# pip install -r requirements.txt
+# pip install gunicorn supervisor nginx-python
