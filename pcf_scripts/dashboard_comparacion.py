@@ -106,7 +106,7 @@ class DashboardValidacionCEAPSI:
                 df_completo['FECHA'] = pd.to_datetime(df_completo['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
             except:
                 # Fallback para otros formatos
-                df_completo['FECHA'] = pd.to_datetime(df_completo['FECHA'], errors='coerce')
+                df_completo['FECHA'] = pd.to_datetime(df_completo['FECHA'], dayfirst=True, errors='coerce')
             
             df_completo = df_completo.dropna(subset=['FECHA'])
             

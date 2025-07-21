@@ -7,6 +7,23 @@ Sistema completo de predicción y análisis de llamadas para call center
 import streamlit as st
 import sys
 import os
+import warnings
+
+# Suprimir warnings menores
+warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
+import logging
+from datetime import datetime
+
+# Configurar logging detallado
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('ceapsi_app.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('CEAPSI_APP')
 from pathlib import Path
 
 # Agregar el directorio actual al path para imports
@@ -98,43 +115,67 @@ def mostrar_seccion_carga_archivos():
 def procesar_archivo_subido(archivo_subido):
     """Procesa el archivo subido y lo guarda temporalmente"""
     
+    logger.info(f"Iniciando procesamiento de archivo: {archivo_subido.name}")
+    
     try:
         with st.spinner("Procesando archivo..."):
+            logger.info(f"Archivo tipo: {archivo_subido.type if hasattr(archivo_subido, 'type') else 'desconocido'}")
+            logger.info(f"Tamaño archivo: {archivo_subido.size if hasattr(archivo_subido, 'size') else 'desconocido'} bytes")
+            
             # Leer el archivo según su tipo
             if archivo_subido.name.endswith('.csv'):
+                logger.info("Procesando archivo CSV")
                 # Intentar diferentes encodings para CSV
                 contenido_bytes = archivo_subido.read()
+                logger.info(f"Bytes leídos: {len(contenido_bytes)}")
                 
                 for encoding in ['utf-8', 'latin-1', 'cp1252']:
                     try:
+                        logger.info(f"Intentando encoding: {encoding}")
                         contenido_str = contenido_bytes.decode(encoding)
                         df = pd.read_csv(io.StringIO(contenido_str), sep=';')
+                        logger.info(f"CSV leído exitosamente con encoding {encoding}")
                         break
-                    except UnicodeDecodeError:
+                    except UnicodeDecodeError as e:
+                        logger.warning(f"Fallo encoding {encoding}: {e}")
                         continue
                 else:
+                    logger.error("No se pudo decodificar el archivo CSV con ningún encoding")
                     st.error("❌ No se pudo decodificar el archivo CSV")
                     return
             
             elif archivo_subido.name.endswith(('.xlsx', '.xls')):
+                logger.info("Procesando archivo Excel")
                 df = pd.read_excel(archivo_subido)
+                logger.info("Excel leído exitosamente")
+            
+            logger.info(f"DataFrame cargado: {len(df)} filas, {len(df.columns)} columnas")
+            logger.info(f"Columnas encontradas: {list(df.columns)}")
             
             # Validar columnas requeridas
             columnas_requeridas = ['FECHA', 'TELEFONO']
             columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
             
+            logger.info(f"Validando columnas requeridas: {columnas_requeridas}")
+            
             if columnas_faltantes:
+                logger.error(f"Columnas faltantes: {columnas_faltantes}")
                 st.error(f"❌ Columnas faltantes: {', '.join(columnas_faltantes)}")
                 st.info("📝 Columnas encontradas: " + ", ".join(df.columns.tolist()))
                 return
             
             # Validar que hay datos
             if len(df) == 0:
+                logger.error("El archivo está vacío")
                 st.error("❌ El archivo está vacío")
                 return
             
+            logger.info("Validación exitosa, guardando archivo temporal")
+            
             # Guardar en sesión temporal
             archivo_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8')
+            logger.info(f"Archivo temporal creado: {archivo_temp.name}")
+            
             df.to_csv(archivo_temp.name, sep=';', index=False, encoding='utf-8')
             archivo_temp.close()
             
@@ -142,7 +183,12 @@ def procesar_archivo_subido(archivo_subido):
             st.session_state.archivo_datos = archivo_temp.name
             st.session_state.datos_cargados = True
             
+            logger.info(f"Datos guardados exitosamente. Estado actualizado.")
+            
             st.success(f"✅ Archivo procesado exitosamente: {len(df):,} registros cargados")
+            
+            # Mostrar celebración
+            st.balloons()
             
             # Mostrar resumen de datos
             st.info(f"📊 **Resumen del archivo:**")
@@ -153,7 +199,12 @@ def procesar_archivo_subido(archivo_subido):
             # Intentar detectar rango de fechas
             if 'FECHA' in df.columns:
                 try:
-                    fechas = pd.to_datetime(df['FECHA'], errors='coerce')
+                    # Primero intentar con el formato específico
+                    fechas = pd.to_datetime(df['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+                    # Si hay muchos valores nulos, intentar con dayfirst=True
+                    if fechas.isnull().sum() > len(df) * 0.5:
+                        fechas = pd.to_datetime(df['FECHA'], dayfirst=True, errors='coerce')
+                    
                     fechas_validas = fechas.dropna()
                     if len(fechas_validas) > 0:
                         fecha_min = fechas_validas.min()
@@ -209,6 +260,152 @@ def main():
         
     else:
         print("❌ No se pudo completar la auditoría")
+
+if __name__ == "__main__":
+    main()
+'''
+    
+    # Guardar script temporal
+    script_temp = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8')
+    script_temp.write(script_content)
+    script_temp.close()
+    
+    return script_temp.name
+
+def crear_script_multimodelo_temporal(ruta_archivo, tipo_llamada):
+    """Crea un script temporal de multi-modelo que usa el archivo cargado"""
+    
+    script_content = '''
+#!/usr/bin/env python3
+# Script temporal de multi-modelo generado automaticamente
+
+import sys
+import os
+import logging
+from datetime import datetime
+
+# Configurar logging para el script temporal
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('ceapsi_multimodelo.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('MULTIMODELO')
+
+sys.path.append(os.path.dirname(__file__))
+
+from sistema_multi_modelo import SistemaMultiModeloCEAPSI
+import pandas as pd
+from pathlib import Path
+
+def main():
+    logger.info("=" * 60)
+    logger.info("INICIANDO SISTEMA MULTI-MODELO CEAPSI")
+    logger.info("=" * 60)
+    
+    print("INICIANDO SISTEMA MULTI-MODELO CEAPSI")
+    print("=" * 60)
+    
+    # Configurar sistema
+    logger.info("Configurando sistema multi-modelo")
+    sistema = SistemaMultiModeloCEAPSI()
+    
+    # Preparar datos desde el archivo cargado
+    tipo_llamada = "'''+tipo_llamada+'''"
+    archivo_datos = r"'''+ruta_archivo+'''"
+    
+    logger.info(f"Tipo de llamada: {tipo_llamada}")
+    logger.info(f"Archivo de datos: {archivo_datos}")
+    
+    print("Procesando llamadas " + tipo_llamada + ":")
+    print("-" * 40)
+    
+    # Cargar y procesar datos
+    try:
+        logger.info("Iniciando carga de datos")
+        if not os.path.exists(archivo_datos):
+            logger.error(f"Archivo no encontrado: {archivo_datos}")
+            print(f"ERROR: Archivo no encontrado: {archivo_datos}")
+            return
+        
+        logger.info("Leyendo archivo CSV")
+        df_completo = pd.read_csv(archivo_datos, sep=';', encoding='utf-8')
+        logger.info(f"Archivo leido: {len(df_completo)} registros, {len(df_completo.columns)} columnas")
+        logger.info(f"Columnas: {list(df_completo.columns)}")
+        
+        # Procesar fechas
+        df_completo['FECHA'] = pd.to_datetime(df_completo['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+        df_completo = df_completo.dropna(subset=['FECHA'])
+        
+        # Filtrar por tipo de llamada
+        if 'SENTIDO' in df_completo.columns:
+            if tipo_llamada == 'ENTRANTE':
+                df_filtrado = df_completo[df_completo['SENTIDO'] == 'in'].copy()
+            else:
+                df_filtrado = df_completo[df_completo['SENTIDO'] == 'out'].copy()
+        else:
+            print("Advertencia: No se encontro columna SENTIDO, usando todos los datos")
+            df_filtrado = df_completo.copy()
+        
+        # Filtrar solo dias laborales
+        df_filtrado = df_filtrado[df_filtrado['FECHA'].dt.dayofweek < 5]
+        
+        # Agregar por dia
+        df_diario = df_filtrado.groupby(df_filtrado['FECHA'].dt.date).size().reset_index()
+        df_diario.columns = ['ds', 'y']
+        df_diario['ds'] = pd.to_datetime(df_diario['ds'])
+        
+        # Agregar regresores basicos
+        df_diario['dia_semana'] = df_diario['ds'].dt.dayofweek + 1
+        df_diario['es_inicio_mes'] = (df_diario['ds'].dt.day <= 5).astype(int)
+        df_diario['semana_mes'] = ((df_diario['ds'].dt.day - 1) // 7) + 1
+        
+        print("Datos procesados: " + str(len(df_diario)) + " dias de " + tipo_llamada.lower())
+        
+        if len(df_diario) < 30:
+            print("ERROR: Datos insuficientes para entrenamiento (minimo 30 dias)")
+            return
+        
+        # Entrenar todos los modelos
+        sistema.entrenar_modelo_arima(df_diario)
+        sistema.entrenar_modelo_prophet(df_diario)
+        sistema.entrenar_modelos_ml(df_diario)
+        
+        # Validacion cruzada
+        metricas_cv = sistema.validacion_cruzada_temporal(df_diario)
+        
+        # Calcular pesos ensemble
+        sistema.calcular_pesos_ensemble(metricas_cv)
+        
+        # Generar predicciones
+        predicciones = sistema.generar_predicciones_ensemble(df_diario, dias_futuro=28)
+        
+        if predicciones is not None:
+            # Detectar alertas
+            alertas = sistema.detectar_alertas_avanzadas(predicciones, df_diario)
+            
+            # Exportar resultados
+            output_path = os.path.dirname(__file__)
+            sistema.exportar_resultados_completos(predicciones, alertas, tipo_llamada, output_path)
+            
+            print("\\nRESUMEN " + tipo_llamada + ":")
+            promedio = predicciones['yhat_ensemble'].mean()
+            print("   Promedio predicho: " + str(round(promedio, 1)) + " llamadas/dia")
+            dia_pico_idx = predicciones['yhat_ensemble'].idxmax()
+            dia_pico = predicciones.loc[dia_pico_idx, 'ds'].strftime('%A')
+            print("   Dia pico: " + dia_pico)
+            print("   Alertas: " + str(len(alertas)) + " detectadas")
+            print("\\nSISTEMA MULTI-MODELO COMPLETADO EXITOSAMENTE")
+        else:
+            print("ERROR: No se pudieron generar predicciones")
+            
+    except Exception as e:
+        print("ERROR: " + str(e))
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
@@ -322,8 +519,42 @@ def mostrar_inicio():
     # Mostrar estado de carga
     if st.session_state.datos_cargados:
         st.success("✅ ¡Datos cargados! Ya puedes usar todos los módulos del sistema.")
+        
+        # Mostrar resumen rápido de los datos cargados
+        try:
+            df = pd.read_csv(st.session_state.archivo_datos, sep=';')
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📊 Registros Cargados", f"{len(df):,}")
+            with col2:
+                if 'FECHA' in df.columns:
+                    fechas = pd.to_datetime(df['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+                    dias_unicos = fechas.dt.date.nunique()
+                    st.metric("📅 Días de Datos", f"{dias_unicos}")
+                else:
+                    st.metric("📅 Días de Datos", "N/A")
+            with col3:
+                if 'SENTIDO' in df.columns:
+                    tipos = df['SENTIDO'].value_counts()
+                    entrantes = tipos.get('in', 0)
+                    salientes = tipos.get('out', 0)
+                    st.metric("📞 Tipos", f"E:{entrantes} S:{salientes}")
+                else:
+                    st.metric("📞 Tipos", "Sin segmentar")
+        except:
+            st.info("📊 Datos cargados correctamente")
     else:
         st.info("🔄 Esperando datos... Sube tu archivo CSV o Excel en la sección 'Cargar Datos' del sidebar.")
+        
+        # Mostrar instrucción visual
+        st.markdown("""
+        📍 **Pasos para comenzar:**
+        1. Ve al sidebar → "Cargar Datos"
+        2. Haz clic en "Seleccionar archivo de llamadas"
+        3. Sube tu archivo CSV o Excel
+        4. Haz clic en "🚀 Procesar Archivo"
+        5. ¡Listo! Todos los módulos estarán disponibles
+        """)
     
     # Métricas principales
     col1, col2, col3, col4 = st.columns(4)
@@ -473,7 +704,9 @@ def mostrar_auditoria():
                         cwd=Path(__file__).parent,
                         capture_output=True,
                         text=True,
-                        timeout=300
+                        timeout=300,
+                        encoding='utf-8',
+                        errors='replace'  # Manejar errores de encoding
                     )
                     
                     # Limpiar archivo temporal
@@ -596,6 +829,42 @@ def mostrar_multimodelo():
     st.title("🤖 Sistema Multi-Modelo")
     st.markdown("### Entrenamiento y Predicción con Ensemble")
     
+    if not st.session_state.datos_cargados:
+        st.warning("⚠️ No hay datos cargados para entrenar modelos")
+        st.info("📁 Sube un archivo de datos primero")
+        return
+    
+    # Verificar calidad de datos antes de entrenar
+    try:
+        df = pd.read_csv(st.session_state.archivo_datos, sep=';')
+        
+        # Verificar columnas necesarias
+        if 'FECHA' not in df.columns:
+            st.error("❌ El archivo debe tener una columna 'FECHA'")
+            return
+        
+        # Procesar fechas para verificar datos válidos
+        fechas = pd.to_datetime(df['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+        df_validas = df[fechas.notna()]
+        
+        if len(df_validas) < 100:
+            st.error(f"❌ Datos insuficientes: {len(df_validas)} registros válidos (mínimo 100)")
+            st.info("💡 Necesitas al menos 100 registros con fechas válidas para entrenar modelos")
+            return
+        
+        # Verificar días únicos
+        dias_unicos = fechas.dt.date.nunique()
+        if dias_unicos < 30:
+            st.error(f"❌ Periodo insuficiente: {dias_unicos} días únicos (mínimo 30 días)")
+            st.info("💡 Necesitas al menos 30 días de datos para entrenar modelos de series de tiempo")
+            return
+        
+        st.success(f"✅ Datos válidos: {len(df_validas):,} registros en {dias_unicos} días")
+        
+    except Exception as e:
+        st.error(f"❌ Error validando datos: {e}")
+        return
+    
     # Selector de tipo de llamada
     tipo_llamada = st.selectbox(
         "Seleccionar tipo de llamada:",
@@ -616,29 +885,39 @@ def mostrar_multimodelo():
     
     with col2:
         if st.button(f"🚀 Entrenar {tipo_llamada}", use_container_width=True, type="primary"):
+            logger.info(f"Iniciando entrenamiento de modelos para {tipo_llamada}")
+            
             with st.spinner(f"Entrenando modelos para llamadas {tipo_llamada.lower()}..."):
                 try:
-                    # Crear configuración temporal
-                    config_temp = {
-                        'tipo_llamada': tipo_llamada,
-                        'modelos_activos': ['arima', 'prophet', 'random_forest', 'gradient_boosting']
-                    }
+                    logger.info("Creando script temporal de multi-modelo")
+                    # Crear script temporal que use el archivo cargado
+                    script_temp = crear_script_multimodelo_temporal(st.session_state.archivo_datos, tipo_llamada)
+                    logger.info(f"Script temporal creado: {script_temp}")
                     
-                    config_path = Path(__file__).parent / 'temp_config.json'
-                    with open(config_path, 'w') as f:
-                        json.dump(config_temp, f)
-                    
+                    logger.info("Ejecutando subprocess para entrenamiento")
                     result = subprocess.run(
-                        [sys.executable, "sistema_multi_modelo.py"],
+                        [sys.executable, script_temp],
                         cwd=Path(__file__).parent,
                         capture_output=True,
                         text=True,
-                        timeout=600
+                        timeout=600,
+                        encoding='utf-8',
+                        errors='replace'  # Manejar errores de encoding
                     )
                     
+                    logger.info(f"Subprocess completado con código: {result.returncode}")
+                    logger.info(f"STDOUT length: {len(result.stdout) if result.stdout else 0}")
+                    logger.info(f"STDERR length: {len(result.stderr) if result.stderr else 0}")
+                    
+                    if result.stdout:
+                        logger.info(f"STDOUT: {result.stdout[:500]}...")  # Primeros 500 caracteres
+                    if result.stderr:
+                        logger.error(f"STDERR: {result.stderr[:500]}...")  # Primeros 500 caracteres
+                    
                     # Limpiar archivo temporal
-                    if config_path.exists():
-                        config_path.unlink()
+                    if os.path.exists(script_temp):
+                        os.remove(script_temp)
+                        logger.info("Archivo temporal limpiado")
                     
                     if result.returncode == 0:
                         st.success(f"✅ Modelos para {tipo_llamada} entrenados exitosamente")

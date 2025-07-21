@@ -19,20 +19,7 @@ enableXsrfProtection = false
 [browser]
 # Configuración del navegador
 gatherUsageStats = false
-showErrorDetails = true
 
 [logger]
 # Configuración de logging
 level = "info"
-
-[runner]
-# Configuración del runner
-magicEnabled = true
-installTracer = false
-fixMatplotlib = true
-
-[client]
-# Configuración del cliente
-caching = true
-displayEnabled = true
-showErrorDetails = true
