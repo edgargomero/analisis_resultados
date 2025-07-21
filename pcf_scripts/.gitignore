@@ -49,6 +49,9 @@ logs/
 # But keep example data
 !ejemplo_datos_llamadas.csv
 
+# Temporary placeholder data files
+datos_prophet_*.csv
+
 # Streamlit
 .streamlit/secrets.toml
 

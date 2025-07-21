@@ -594,7 +594,7 @@ def crear_configuracion_pcf_ejemplo():
     """Crea archivo de configuración de ejemplo para PCF"""
     
     config_pcf = {
-        "base_path": r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados",
+        "base_path": str(Path(__file__).parent.absolute()),
         "objetivos_performance": {
             "mae_objetivo": 10.0,
             "rmse_objetivo": 15.0,
@@ -1461,7 +1461,7 @@ class SistemaAutomatizacionPCF:
     def _config_por_defecto(self):
         """Configuración por defecto del sistema"""
         return {
-            'base_path': r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados",
+            'base_path': str(Path(__file__).parent.absolute()),
             'objetivos_performance': {
                 'mae_objetivo': 10.0,
                 'rmse_objetivo': 15.0,

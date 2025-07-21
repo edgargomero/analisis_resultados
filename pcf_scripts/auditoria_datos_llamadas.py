@@ -391,9 +391,10 @@ class AuditoriaLlamadasAlodesk:
 def main():
     """Función principal de auditoría"""
     
-    # Configurar rutas actualizadas
-    base_path = r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados"
-    archivo_llamadas = f"{base_path}\\backups\\alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
+    # Usar directorio actual del script
+    from pathlib import Path
+    base_path = Path(__file__).parent.absolute()
+    archivo_llamadas = base_path / "backups" / "alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
     output_path = base_path
     
     print("🔍 INICIANDO AUDITORÍA PROFUNDA DE DATOS DE LLAMADAS")

@@ -55,8 +55,10 @@ class SistemaMultiModeloCEAPSI:
     def cargar_datos_segmentados(self, tipo_llamada='ENTRANTE'):
         """Carga datos segmentados por tipo de llamada"""
         
-        base_path = r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados"
-        archivo_datos = f"{base_path}/datos_prophet_{tipo_llamada.lower()}.csv"
+        # Usar directorio actual del script
+        from pathlib import Path
+        base_path = Path(__file__).parent.absolute()
+        archivo_datos = base_path / f"datos_prophet_{tipo_llamada.lower()}.csv"
         
         try:
             df = pd.read_csv(archivo_datos)
@@ -808,7 +810,8 @@ def main():
             alertas = sistema.detectar_alertas_avanzadas(predicciones, df)
             
             # Exportar resultados
-            output_path = r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados"
+            from pathlib import Path
+            output_path = Path(__file__).parent.absolute()
             sistema.exportar_resultados_completos(predicciones, alertas, tipo, output_path)
             
             print(f"\n🎯 RESUMEN {tipo}:")

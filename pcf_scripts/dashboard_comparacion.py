@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 import json
 from datetime import datetime, timedelta
 import os
+from pathlib import Path
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 
 # Configuración de la página
@@ -31,12 +32,14 @@ class DashboardValidacionCEAPSI:
         
     def _obtener_ruta_resultados(self):
         """Obtiene la carpeta de resultados más reciente"""
-        base_path = r"C:\Users\edgar\OneDrive\Documentos\BBDDCEAPSI\claude\analisis_resultados"
+        # Usar directorio actual del script
+        base_path = Path(__file__).parent.absolute()
         try:
+            # Buscar carpetas de resultados en el directorio actual
             carpetas = [d for d in os.listdir(base_path) if d.startswith('resultados_')]
             if carpetas:
                 return os.path.join(base_path, max(carpetas))
-            return base_path
+            return str(base_path)
         except:
             return base_path
     
