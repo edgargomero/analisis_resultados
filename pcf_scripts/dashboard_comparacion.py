@@ -916,6 +916,11 @@ class DashboardValidacionCEAPSI:
         
         st.markdown("---")
         
+        # Heatmaps de patrones temporales
+        self.mostrar_heatmaps_patrones_temporales(tipo_llamada)
+        
+        st.markdown("---")
+        
         # Alertas validadas
         self.mostrar_alertas_validacion(resultados)
         
@@ -931,6 +936,283 @@ class DashboardValidacionCEAPSI:
             f"Tipo: {tipo_llamada} | "
             f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         )
+    
+    def mostrar_heatmaps_patrones_temporales(self, tipo_llamada):
+        """Muestra heatmaps de patrones temporales de llamadas"""
+        
+        st.subheader("📈 Análisis de Patrones Temporales")
+        
+        # Cargar datos completos para el análisis
+        df_completo = self.cargar_datos_llamadas_completos()
+        
+        if df_completo is None or len(df_completo) == 0:
+            st.warning("⚠️ No hay datos suficientes para generar heatmaps de patrones temporales")
+            return
+        
+        # Preparar datos
+        df_filtrado = self._preparar_datos_heatmap(df_completo, tipo_llamada)
+        
+        if len(df_filtrado) == 0:
+            st.warning(f"⚠️ No hay datos suficientes para {tipo_llamada}")
+            return
+        
+        # Crear pestañas para diferentes tipos de heatmaps
+        tab1, tab2, tab3 = st.tabs(["🗓️ Patrón Semanal", "🕐 Patrón Horario", "📊 Combinado"])
+        
+        with tab1:
+            self._mostrar_heatmap_semanal(df_filtrado, tipo_llamada)
+        
+        with tab2:
+            self._mostrar_heatmap_horario(df_filtrado, tipo_llamada)
+        
+        with tab3:
+            self._mostrar_heatmap_combinado(df_filtrado, tipo_llamada)
+    
+    def _preparar_datos_heatmap(self, df_completo, tipo_llamada):
+        """Prepara los datos para generar heatmaps"""
+        try:
+            # Filtrar por tipo de llamada si no son datos de ejemplo
+            if 'SENTIDO' in df_completo.columns:
+                sentido_filter = 'in' if tipo_llamada.upper() == 'ENTRANTE' else 'out'
+                df_filtrado = df_completo[df_completo['SENTIDO'] == sentido_filter].copy()
+            else:
+                # Para datos de ejemplo que no tienen SENTIDO
+                df_filtrado = df_completo.copy()
+            
+            # Convertir fechas
+            df_filtrado['FECHA'] = pd.to_datetime(df_filtrado['FECHA'], errors='coerce')
+            
+            # Filtrar datos válidos
+            df_filtrado = df_filtrado.dropna(subset=['FECHA'])
+            
+            # Agregar columnas temporales
+            df_filtrado['dia_semana'] = df_filtrado['FECHA'].dt.day_name()
+            df_filtrado['dia_semana_num'] = df_filtrado['FECHA'].dt.dayofweek
+            df_filtrado['hora'] = df_filtrado['FECHA'].dt.hour
+            df_filtrado['fecha_solo'] = df_filtrado['FECHA'].dt.date
+            df_filtrado['semana'] = df_filtrado['FECHA'].dt.isocalendar().week
+            df_filtrado['mes'] = df_filtrado['FECHA'].dt.month
+            
+            return df_filtrado
+            
+        except Exception as e:
+            st.error(f"Error preparando datos: {e}")
+            return pd.DataFrame()
+    
+    def _mostrar_heatmap_semanal(self, df_filtrado, tipo_llamada):
+        """Muestra heatmap de patrones por día de la semana"""
+        
+        st.subheader(f"🗓️ Patrón de Llamadas {tipo_llamada} por Día de la Semana")
+        
+        try:
+            # Agrupar por día de la semana y semana del año
+            agrupacion = df_filtrado.groupby(['semana', 'dia_semana_num']).size().reset_index(name='llamadas')
+            
+            # Crear matriz para el heatmap
+            dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            
+            # Pivot para crear matriz
+            matriz_semanal = agrupacion.pivot(index='semana', columns='dia_semana_num', values='llamadas')
+            matriz_semanal = matriz_semanal.fillna(0)
+            
+            # Asegurar que tenemos todas las columnas (días de la semana)
+            for i in range(7):
+                if i not in matriz_semanal.columns:
+                    matriz_semanal[i] = 0
+            
+            # Ordenar columnas
+            matriz_semanal = matriz_semanal[sorted(matriz_semanal.columns)]
+            
+            # Crear heatmap con Plotly
+            fig_semanal = go.Figure(data=go.Heatmap(
+                z=matriz_semanal.values,
+                x=[dias_semana[i] for i in sorted(matriz_semanal.columns)],
+                y=[f'Semana {int(semana)}' for semana in matriz_semanal.index],
+                colorscale='Blues',
+                hoveringmode='closest',
+                hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
+                colorbar=dict(title="Número de Llamadas")
+            ))
+            
+            fig_semanal.update_layout(
+                title=f'Distribución Semanal de Llamadas {tipo_llamada}',
+                xaxis_title='Día de la Semana',
+                yaxis_title='Semana del Año',
+                height=400,
+                font=dict(size=12)
+            )
+            
+            st.plotly_chart(fig_semanal, use_container_width=True)
+            
+            # Métricas de resumen semanal
+            col1, col2, col3 = st.columns(3)
+            
+            # Calcular estadísticas por día
+            stats_diarios = df_filtrado.groupby('dia_semana')['FECHA'].count()
+            
+            with col1:
+                dia_mas_activo = stats_diarios.idxmax()
+                max_llamadas = stats_diarios.max()
+                st.metric("📈 Día Más Activo", dia_mas_activo, f"{max_llamadas} llamadas")
+            
+            with col2:
+                dia_menos_activo = stats_diarios.idxmin()
+                min_llamadas = stats_diarios.min()
+                st.metric("📉 Día Menos Activo", dia_menos_activo, f"{min_llamadas} llamadas")
+            
+            with col3:
+                variacion = ((max_llamadas - min_llamadas) / min_llamadas * 100) if min_llamadas > 0 else 0
+                st.metric("📊 Variación Semanal", f"{variacion:.1f}%")
+            
+        except Exception as e:
+            st.error(f"Error generando heatmap semanal: {e}")
+    
+    def _mostrar_heatmap_horario(self, df_filtrado, tipo_llamada):
+        """Muestra heatmap de patrones por hora del día"""
+        
+        st.subheader(f"🕐 Patrón de Llamadas {tipo_llamada} por Hora del Día")
+        
+        try:
+            # Agrupar por día y hora
+            agrupacion_horaria = df_filtrado.groupby(['fecha_solo', 'hora']).size().reset_index(name='llamadas')
+            
+            # Crear matriz para el heatmap
+            matriz_horaria = agrupacion_horaria.pivot(index='fecha_solo', columns='hora', values='llamadas')
+            matriz_horaria = matriz_horaria.fillna(0)
+            
+            # Asegurar que tenemos todas las horas (0-23)
+            for hora in range(24):
+                if hora not in matriz_horaria.columns:
+                    matriz_horaria[hora] = 0
+            
+            # Ordenar columnas
+            matriz_horaria = matriz_horaria[sorted(matriz_horaria.columns)]
+            
+            # Limitar a últimos 30 días para mejor visualización
+            if len(matriz_horaria) > 30:
+                matriz_horaria = matriz_horaria.tail(30)
+            
+            # Crear heatmap con Plotly
+            fig_horario = go.Figure(data=go.Heatmap(
+                z=matriz_horaria.values,
+                x=[f'{h:02d}:00' for h in sorted(matriz_horaria.columns)],
+                y=[str(fecha) for fecha in matriz_horaria.index],
+                colorscale='Viridis',
+                hoveringmode='closest',
+                hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
+                colorbar=dict(title="Número de Llamadas")
+            ))
+            
+            fig_horario.update_layout(
+                title=f'Distribución Horaria de Llamadas {tipo_llamada} (Últimos 30 días)',
+                xaxis_title='Hora del Día',
+                yaxis_title='Fecha',
+                height=500,
+                font=dict(size=12)
+            )
+            
+            # Rotar etiquetas del eje Y para mejor legibilidad
+            fig_horario.update_yaxes(tickangle=0)
+            fig_horario.update_xaxes(tickangle=45)
+            
+            st.plotly_chart(fig_horario, use_container_width=True)
+            
+            # Métricas de resumen horario
+            col1, col2, col3 = st.columns(3)
+            
+            # Calcular estadísticas por hora
+            stats_horarios = df_filtrado.groupby('hora')['FECHA'].count()
+            
+            with col1:
+                hora_pico = stats_horarios.idxmax()
+                max_llamadas_hora = stats_horarios.max()
+                st.metric("🔥 Hora Pico", f"{hora_pico:02d}:00", f"{max_llamadas_hora} llamadas")
+            
+            with col2:
+                hora_valle = stats_horarios.idxmin()
+                min_llamadas_hora = stats_horarios.min()
+                st.metric("🌙 Hora Valle", f"{hora_valle:02d}:00", f"{min_llamadas_hora} llamadas")
+            
+            with col3:
+                # Calcular horario laboral (8-18)
+                llamadas_laborales = df_filtrado[(df_filtrado['hora'] >= 8) & (df_filtrado['hora'] <= 18)]
+                pct_laborales = (len(llamadas_laborales) / len(df_filtrado) * 100) if len(df_filtrado) > 0 else 0
+                st.metric("🏢 % Horario Laboral", f"{pct_laborales:.1f}%")
+            
+        except Exception as e:
+            st.error(f"Error generando heatmap horario: {e}")
+    
+    def _mostrar_heatmap_combinado(self, df_filtrado, tipo_llamada):
+        """Muestra heatmap combinado día de semana vs hora"""
+        
+        st.subheader(f"📊 Patrón Combinado: Día de Semana vs Hora ({tipo_llamada})")
+        
+        try:
+            # Agrupar por día de semana y hora
+            agrupacion_combinada = df_filtrado.groupby(['dia_semana_num', 'hora']).size().reset_index(name='llamadas')
+            
+            # Crear matriz para el heatmap
+            matriz_combinada = agrupacion_combinada.pivot(index='dia_semana_num', columns='hora', values='llamadas')
+            matriz_combinada = matriz_combinada.fillna(0)
+            
+            # Asegurar que tenemos todas las horas
+            for hora in range(24):
+                if hora not in matriz_combinada.columns:
+                    matriz_combinada[hora] = 0
+            
+            # Ordenar columnas
+            matriz_combinada = matriz_combinada[sorted(matriz_combinada.columns)]
+            
+            # Nombres de días
+            dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            
+            # Crear heatmap
+            fig_combinado = go.Figure(data=go.Heatmap(
+                z=matriz_combinada.values,
+                x=[f'{h:02d}:00' for h in sorted(matriz_combinada.columns)],
+                y=[dias_semana[i] for i in matriz_combinada.index],
+                colorscale='RdYlBu_r',
+                hoveringmode='closest',
+                hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
+                colorbar=dict(title="Promedio de Llamadas")
+            ))
+            
+            fig_combinado.update_layout(
+                title=f'Mapa de Calor: Llamadas {tipo_llamada} por Día y Hora',
+                xaxis_title='Hora del Día',
+                yaxis_title='Día de la Semana',
+                height=400,
+                font=dict(size=12)
+            )
+            
+            st.plotly_chart(fig_combinado, use_container_width=True)
+            
+            # Insights del patrón combinado
+            st.subheader("🔍 Insights del Patrón Combinado")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Encontrar el momento más activo
+                max_pos = np.unravel_index(matriz_combinada.values.argmax(), matriz_combinada.values.shape)
+                dia_max = dias_semana[matriz_combinada.index[max_pos[0]]]
+                hora_max = sorted(matriz_combinada.columns)[max_pos[1]]
+                valor_max = matriz_combinada.values[max_pos]
+                
+                st.info(f"🔥 **Momento Más Activo**  \n{dia_max} a las {hora_max:02d}:00  \n{valor_max:.0f} llamadas promedio")
+            
+            with col2:
+                # Calcular concentración de llamadas
+                total_llamadas = matriz_combinada.values.sum()
+                # Top 20% de células más activas
+                flat_values = matriz_combinada.values.flatten()
+                top_20_percent = np.percentile(flat_values, 80)
+                concentracion = (flat_values >= top_20_percent).sum() / len(flat_values) * 100
+                
+                st.info(f"📊 **Concentración de Actividad**  \nEl 80% de las llamadas ocurren en  \n{concentracion:.1f}% del tiempo")
+            
+        except Exception as e:
+            st.error(f"Error generando heatmap combinado: {e}")
     
     def _crear_datos_ejemplo_historicos(self, tipo_llamada):
         """Crea datos de ejemplo para cuando no hay archivos históricos"""
