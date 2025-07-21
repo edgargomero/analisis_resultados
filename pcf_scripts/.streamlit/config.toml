@@ -1,25 +1,22 @@
 [global]
-# Configuración global de Streamlit
-
-[theme]
-# Tema personalizado para CEAPSI
-primaryColor = "#1f77b4"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
-font = "sans serif"
+developmentMode = false
+showWarningOnDirectExecution = false
 
 [server]
-# Configuración del servidor
 headless = true
 port = 8501
 enableCORS = false
 enableXsrfProtection = false
 
 [browser]
-# Configuración del navegador
 gatherUsageStats = false
 
+[theme]
+base = "light"
+primaryColor = "#FF6B6B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+
 [logger]
-# Configuración de logging
 level = "info"
