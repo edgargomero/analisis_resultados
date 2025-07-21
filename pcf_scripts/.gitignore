@@ -55,8 +55,17 @@ logs/
 # Backup files
 *.backup
 
-# Batch files
+# Development scripts
+complete_debug.py
+final_check.py
+fix_ceapsi.py
+start_ceapsi.py
+verify_ceapsi.py
+debug/
+
+# Batch and shell files
 *.bat
+*.sh
 
 # Temporary files
 *.tmp
