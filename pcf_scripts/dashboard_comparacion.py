@@ -78,6 +78,44 @@ class DashboardValidacionCEAPSI:
             st.warning(f"No se pudieron cargar datos históricos: {e}")
             return None
     
+    @st.cache_data(ttl=300)
+    def cargar_datos_llamadas_completos(_self):
+        """Carga datos completos de llamadas desde el archivo original"""
+        try:
+            # Ruta al archivo principal de llamadas
+            archivo_llamadas = f"{_self.base_path}/backups/alodesk_reporte_llamadas_jan2023_to_jul2025.csv"
+            
+            # Intentar diferentes encodings
+            for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                try:
+                    df_completo = pd.read_csv(archivo_llamadas, sep=';', encoding=encoding)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            else:
+                st.error("No se pudo cargar el archivo con ningún encoding")
+                return None
+            
+            # Procesar fechas
+            df_completo['FECHA'] = pd.to_datetime(df_completo['FECHA'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+            df_completo = df_completo.dropna(subset=['FECHA'])
+            
+            # Agregar columnas derivadas
+            df_completo['fecha_solo'] = df_completo['FECHA'].dt.date
+            df_completo['hora'] = df_completo['FECHA'].dt.hour
+            df_completo['dia_semana'] = df_completo['FECHA'].dt.day_name()
+            df_completo['mes'] = df_completo['FECHA'].dt.month
+            df_completo['ano'] = df_completo['FECHA'].dt.year
+            
+            # Filtrar solo días laborales
+            df_completo = df_completo[df_completo['FECHA'].dt.dayofweek < 5]
+            
+            return df_completo
+            
+        except Exception as e:
+            st.error(f"Error cargando datos completos: {e}")
+            return None
+    
     def mostrar_header_validacion(self):
         """Header del dashboard de validación"""
         st.title("📊 CEAPSI - Validación de Modelos de Predicción")
@@ -523,6 +561,231 @@ class DashboardValidacionCEAPSI:
         else:
             st.success("✅ El sistema está funcionando óptimamente. No hay recomendaciones críticas.")
     
+    def mostrar_graficas_atencion_promedio(self, tipo_llamada):
+        """Muestra gráficas de atención promedio de los últimos 15, 30 y 90 días"""
+        st.subheader("📞 Análisis de Atención Promedio por Períodos")
+        
+        # Cargar datos completos
+        df_completo = self.cargar_datos_llamadas_completos()
+        
+        if df_completo is None:
+            st.error("❌ No se pudieron cargar los datos de llamadas")
+            return
+        
+        # Filtrar por tipo de llamada si está disponible la columna SENTIDO
+        if 'SENTIDO' in df_completo.columns:
+            if tipo_llamada == 'ENTRANTE':
+                df_filtrado = df_completo[df_completo['SENTIDO'] == 'in'].copy()
+            else:
+                df_filtrado = df_completo[df_completo['SENTIDO'] == 'out'].copy()
+        else:
+            df_filtrado = df_completo.copy()
+            st.info("ℹ️ Mostrando datos combinados (no se pudo filtrar por tipo)")
+        
+        # Calcular fecha límite para cada período
+        fecha_actual = datetime.now().date()
+        fecha_15d = fecha_actual - timedelta(days=15)
+        fecha_30d = fecha_actual - timedelta(days=30)
+        fecha_90d = fecha_actual - timedelta(days=90)
+        
+        # Agregar datos por día
+        df_diario = df_filtrado.groupby('fecha_solo').agg({
+            'TELEFONO': 'count',  # Total de llamadas
+            'ATENDIDA': lambda x: (x == 'Si').sum() if 'ATENDIDA' in df_filtrado.columns else 0,  # Llamadas atendidas
+            'hora': 'mean'  # Hora promedio (para referencia)
+        }).reset_index()
+        
+        df_diario.columns = ['fecha', 'total_llamadas', 'llamadas_atendidas', 'hora_promedio']
+        df_diario['fecha'] = pd.to_datetime(df_diario['fecha'])
+        
+        # Calcular porcentaje de atención
+        df_diario['porcentaje_atencion'] = (df_diario['llamadas_atendidas'] / df_diario['total_llamadas'] * 100).fillna(0)
+        
+        # Filtrar por períodos
+        df_15d = df_diario[df_diario['fecha'] >= pd.to_datetime(fecha_15d)]
+        df_30d = df_diario[df_diario['fecha'] >= pd.to_datetime(fecha_30d)]
+        df_90d = df_diario[df_diario['fecha'] >= pd.to_datetime(fecha_90d)]
+        
+        # Crear métricas resumen
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if len(df_15d) > 0:
+                promedio_15d = df_15d['porcentaje_atencion'].mean()
+                llamadas_15d = df_15d['total_llamadas'].sum()
+                st.metric(
+                    "📅 Últimos 15 días",
+                    f"{promedio_15d:.1f}%",
+                    f"{llamadas_15d:,} llamadas totales"
+                )
+            else:
+                st.metric("📅 Últimos 15 días", "Sin datos", "")
+        
+        with col2:
+            if len(df_30d) > 0:
+                promedio_30d = df_30d['porcentaje_atencion'].mean()
+                llamadas_30d = df_30d['total_llamadas'].sum()
+                st.metric(
+                    "📅 Últimos 30 días",
+                    f"{promedio_30d:.1f}%",
+                    f"{llamadas_30d:,} llamadas totales"
+                )
+            else:
+                st.metric("📅 Últimos 30 días", "Sin datos", "")
+        
+        with col3:
+            if len(df_90d) > 0:
+                promedio_90d = df_90d['porcentaje_atencion'].mean()
+                llamadas_90d = df_90d['total_llamadas'].sum()
+                st.metric(
+                    "📅 Últimos 90 días",
+                    f"{promedio_90d:.1f}%",
+                    f"{llamadas_90d:,} llamadas totales"
+                )
+            else:
+                st.metric("📅 Últimos 90 días", "Sin datos", "")
+        
+        # Crear gráfica comparativa
+        if len(df_90d) > 0:
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=(
+                    "Porcentaje de Atención por Día (Últimos 90 días)",
+                    "Comparación de Promedios por Período",
+                    "Volumen de Llamadas Diarias",
+                    "Tendencia de Atención (Últimos 30 días)"
+                ),
+                specs=[[{"colspan": 2}, None],
+                       [{}, {}]],
+                vertical_spacing=0.12
+            )
+            
+            # Gráfica principal: línea de tiempo de atención
+            fig.add_trace(
+                go.Scatter(
+                    x=df_90d['fecha'],
+                    y=df_90d['porcentaje_atencion'],
+                    mode='lines+markers',
+                    name='% Atención Diaria',
+                    line=dict(color='#1f77b4', width=2),
+                    marker=dict(size=4),
+                    hovertemplate='<b>%{x}</b><br>Atención: %{y:.1f}%<extra></extra>'
+                ),
+                row=1, col=1
+            )
+            
+            # Líneas de referencia para períodos
+            if len(df_15d) > 0:
+                fig.add_hline(
+                    y=df_15d['porcentaje_atencion'].mean(),
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text=f"Promedio 15d: {df_15d['porcentaje_atencion'].mean():.1f}%",
+                    row=1, col=1
+                )
+            
+            if len(df_30d) > 0:
+                fig.add_hline(
+                    y=df_30d['porcentaje_atencion'].mean(),
+                    line_dash="dot",
+                    line_color="orange",
+                    annotation_text=f"Promedio 30d: {df_30d['porcentaje_atencion'].mean():.1f}%",
+                    row=1, col=1
+                )
+            
+            # Gráfica de barras: comparación de promedios
+            periodos = []
+            promedios = []
+            colores = []
+            
+            if len(df_15d) > 0:
+                periodos.append('15 días')
+                promedios.append(df_15d['porcentaje_atencion'].mean())
+                colores.append('#ff7f0e')
+            
+            if len(df_30d) > 0:
+                periodos.append('30 días')
+                promedios.append(df_30d['porcentaje_atencion'].mean())
+                colores.append('#2ca02c')
+            
+            if len(df_90d) > 0:
+                periodos.append('90 días')
+                promedios.append(df_90d['porcentaje_atencion'].mean())
+                colores.append('#d62728')
+            
+            if periodos:
+                fig.add_trace(
+                    go.Bar(
+                        x=periodos,
+                        y=promedios,
+                        name='Promedio por Período',
+                        marker_color=colores,
+                        text=[f'{p:.1f}%' for p in promedios],
+                        textposition='auto',
+                        hovertemplate='<b>%{x}</b><br>Promedio: %{y:.1f}%<extra></extra>'
+                    ),
+                    row=2, col=1
+                )
+            
+            # Gráfica de volumen de llamadas
+            fig.add_trace(
+                go.Bar(
+                    x=df_30d['fecha'] if len(df_30d) > 0 else [],
+                    y=df_30d['total_llamadas'] if len(df_30d) > 0 else [],
+                    name='Llamadas Diarias',
+                    marker_color='lightblue',
+                    opacity=0.7,
+                    hovertemplate='<b>%{x}</b><br>Llamadas: %{y}<extra></extra>'
+                ),
+                row=2, col=2
+            )
+            
+            # Configurar layout
+            fig.update_layout(
+                height=800,
+                title=f"Análisis de Atención - Llamadas {tipo_llamada}",
+                showlegend=True
+            )
+            
+            fig.update_xaxes(title_text="Fecha", row=1, col=1)
+            fig.update_yaxes(title_text="Porcentaje de Atención (%)", row=1, col=1)
+            fig.update_xaxes(title_text="Período", row=2, col=1)
+            fig.update_yaxes(title_text="Promedio Atención (%)", row=2, col=1)
+            fig.update_xaxes(title_text="Fecha", row=2, col=2)
+            fig.update_yaxes(title_text="Número de Llamadas", row=2, col=2)
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Tabla resumen por día de la semana
+            if len(df_30d) > 0:
+                st.subheader("📊 Resumen por Día de la Semana (Últimos 30 días)")
+                
+                df_30d['dia_semana'] = df_30d['fecha'].dt.day_name()
+                resumen_semanal = df_30d.groupby('dia_semana').agg({
+                    'porcentaje_atencion': ['mean', 'std'],
+                    'total_llamadas': ['mean', 'sum'],
+                    'llamadas_atendidas': 'sum'
+                }).round(2)
+                
+                resumen_semanal.columns = ['Atención Promedio (%)', 'Desv. Estándar (%)', 'Llamadas Promedio/Día', 'Total Llamadas', 'Total Atendidas']
+                
+                # Ordenar por días de la semana
+                orden_dias = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                resumen_semanal = resumen_semanal.reindex([dia for dia in orden_dias if dia in resumen_semanal.index])
+                
+                st.dataframe(
+                    resumen_semanal.style.format({
+                        'Atención Promedio (%)': '{:.1f}%',
+                        'Desv. Estándar (%)': '{:.1f}%',
+                        'Llamadas Promedio/Día': '{:.0f}',
+                        'Total Llamadas': '{:,.0f}',
+                        'Total Atendidas': '{:,.0f}'
+                    }).background_gradient(subset=['Atención Promedio (%)'], cmap='RdYlGn'),
+                    use_container_width=True
+                )
+        else:
+            st.warning("⚠️ No hay datos suficientes para generar las gráficas")
+    
     def mostrar_metricas_objetivo(self, resultados):
         """Muestra progress hacia objetivos del proyecto"""
         st.subheader("🎯 Progress Hacia Objetivos")
@@ -598,9 +861,15 @@ class DashboardValidacionCEAPSI:
         resultados, df_predicciones = self.cargar_resultados_multimodelo(tipo_llamada)
         df_historico = self.cargar_datos_historicos(tipo_llamada)
         
+        # Mostrar gráficas de atención promedio PRIMERO (siempre disponible)
+        self.mostrar_graficas_atencion_promedio(tipo_llamada)
+        
+        st.markdown("---")
+        
         if resultados is None:
             st.error("❌ No se pudieron cargar los resultados del sistema multi-modelo")
             st.info("💡 Ejecutar el sistema multi-modelo primero")
+            st.info("📞 Sin embargo, puedes ver el análisis de atención arriba con los datos históricos")
             return
         
         # Mostrar métricas de objetivo

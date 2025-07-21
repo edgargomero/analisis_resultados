@@ -1,0 +1,462 @@
+{
+  "metadata": {
+    "timestamp": "20250721_140529",
+    "tipo_llamada": "ENTRANTE",
+    "sistema": "multi_modelo_ensemble",
+    "modelos_utilizados": [
+      "arima",
+      "prophet"
+    ],
+    "horizonte_prediccion": 28,
+    "periodo_prediccion": "2025-07-16 a 2025-08-22"
+  },
+  "configuracion": {
+    "horizontes_prediccion": [
+      1,
+      3,
+      7,
+      14,
+      28
+    ],
+    "ventana_validacion": 30,
+    "metrica_principal": "mae",
+    "umbral_precision": 15.0,
+    "modelos_activos": [
+      "arima",
+      "prophet",
+      "random_forest",
+      "gradient_boosting"
+    ],
+    "pesos_iniciales": {
+      "arima": 0.3,
+      "prophet": 0.3,
+      "random_forest": 0.2,
+      "gradient_boosting": 0.2
+    }
+  },
+  "pesos_ensemble": {
+    "arima": 0.5038354720774255,
+    "prophet": 0.4961645279225745
+  },
+  "metadatos_modelos": {
+    "arima": {
+      "parametros": {
+        "order": [
+          1,
+          1,
+          2
+        ],
+        "seasonal_order": [
+          1,
+          1,
+          1,
+          7
+        ]
+      },
+      "aic": 2056.3576463441955,
+      "horizonte_entrenamiento": 7,
+      "fecha_entrenamiento": "2025-07-21T14:05:29.142246"
+    },
+    "prophet": {
+      "regresores_utilizados": [
+        "dia_semana",
+        "es_inicio_mes",
+        "semana_mes"
+      ],
+      "horizonte_entrenamiento": 7,
+      "fecha_entrenamiento": "2025-07-21T14:05:29.242176",
+      "parametros": {
+        "changepoint_prior_scale": 0.05,
+        "seasonality_prior_scale": 10.0,
+        "seasonality_mode": "additive"
+      }
+    },
+    "random_forest": {
+      "features_utilizadas": [
+        "confianza_promedio",
+        "dia_semana",
+        "es_inicio_mes",
+        "semana_mes",
+        "dia_mes",
+        "semana_ano",
+        "mes",
+        "trimestre",
+        "dia_semana_sin",
+        "dia_semana_cos",
+        "mes_sin",
+        "mes_cos",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_7",
+        "lag_14",
+        "media_movil_3",
+        "std_movil_3",
+        "media_movil_7",
+        "std_movil_7",
+        "media_movil_14",
+        "std_movil_14",
+        "tendencia_7d",
+        "promedio_dia_semana",
+        "desviacion_vs_promedio_dia",
+        "z_score",
+        "es_outlier"
+      ],
+      "mae_validacion": 3.2899246039527226,
+      "rmse_validacion": 5.034505657717516,
+      "horizonte_entrenamiento": 7,
+      "fecha_entrenamiento": "2025-07-21T14:05:03.045898",
+      "scaler": null
+    },
+    "gradient_boosting": {
+      "features_utilizadas": [
+        "confianza_promedio",
+        "dia_semana",
+        "es_inicio_mes",
+        "semana_mes",
+        "dia_mes",
+        "semana_ano",
+        "mes",
+        "trimestre",
+        "dia_semana_sin",
+        "dia_semana_cos",
+        "mes_sin",
+        "mes_cos",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_7",
+        "lag_14",
+        "media_movil_3",
+        "std_movil_3",
+        "media_movil_7",
+        "std_movil_7",
+        "media_movil_14",
+        "std_movil_14",
+        "tendencia_7d",
+        "promedio_dia_semana",
+        "desviacion_vs_promedio_dia",
+        "z_score",
+        "es_outlier"
+      ],
+      "mae_validacion": 2.2297777458983403,
+      "rmse_validacion": 3.7324085176106085,
+      "horizonte_entrenamiento": 7,
+      "fecha_entrenamiento": "2025-07-21T14:05:03.343799",
+      "scaler": null
+    },
+    "ridge": {
+      "features_utilizadas": [
+        "confianza_promedio",
+        "dia_semana",
+        "es_inicio_mes",
+        "semana_mes",
+        "dia_mes",
+        "semana_ano",
+        "mes",
+        "trimestre",
+        "dia_semana_sin",
+        "dia_semana_cos",
+        "mes_sin",
+        "mes_cos",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_7",
+        "lag_14",
+        "media_movil_3",
+        "std_movil_3",
+        "media_movil_7",
+        "std_movil_7",
+        "media_movil_14",
+        "std_movil_14",
+        "tendencia_7d",
+        "promedio_dia_semana",
+        "desviacion_vs_promedio_dia",
+        "z_score",
+        "es_outlier"
+      ],
+      "mae_validacion": 0.2733486505301823,
+      "rmse_validacion": 0.3358932298789446,
+      "horizonte_entrenamiento": 7,
+      "fecha_entrenamiento": "2025-07-21T14:05:03.351366",
+      "scaler": "StandardScaler()"
+    }
+  },
+  "predicciones": [
+    {
+      "ds": "2025-07-16 00:00:00",
+      "yhat_ensemble": 157.6633693409342,
+      "yhat_arima": 149.65865526574527,
+      "yhat_prophet": 165.79184017661427,
+      "yhat_std": 8.066592455434503,
+      "yhat_lower": 141.85284812828257,
+      "yhat_upper": 173.47389055358582
+    },
+    {
+      "ds": "2025-07-17 00:00:00",
+      "yhat_ensemble": 152.19344643310023,
+      "yhat_arima": 150.08308472415766,
+      "yhat_prophet": 154.33643535722004,
+      "yhat_std": 2.126675316531191,
+      "yhat_lower": 148.0251628126991,
+      "yhat_upper": 156.36173005350136
+    },
+    {
+      "ds": "2025-07-18 00:00:00",
+      "yhat_ensemble": 141.0031870036705,
+      "yhat_arima": 155.31311368757477,
+      "yhat_prophet": 126.47202191541705,
+      "yhat_std": 14.420545886078862,
+      "yhat_lower": 112.73891706695592,
+      "yhat_upper": 169.26745694038505
+    },
+    {
+      "ds": "2025-07-21 00:00:00",
+      "yhat_ensemble": 114.80746191569372,
+      "yhat_arima": 145.74129718095764,
+      "yhat_prophet": 83.39537455971963,
+      "yhat_std": 31.17296131061901,
+      "yhat_lower": 53.70845774688046,
+      "yhat_upper": 175.90646608450697
+    },
+    {
+      "ds": "2025-07-22 00:00:00",
+      "yhat_ensemble": 101.30922145235954,
+      "yhat_arima": 124.533696728753,
+      "yhat_prophet": 77.72568452837743,
+      "yhat_std": 23.404006100187786,
+      "yhat_lower": 55.437369495991476,
+      "yhat_upper": 147.1810734087276
+    },
+    {
+      "ds": "2025-07-23 00:00:00",
+      "yhat_ensemble": 160.85005201792077,
+      "yhat_arima": 160.99756481015552,
+      "yhat_prophet": 160.70025860640013,
+      "yhat_std": 0.14865310187769865,
+      "yhat_lower": 160.5586919382405,
+      "yhat_upper": 161.14141209760106
+    },
+    {
+      "ds": "2025-07-24 00:00:00",
+      "yhat_ensemble": 154.1264309905438,
+      "yhat_arima": 151.8962863967123,
+      "yhat_prophet": 156.3910547010267,
+      "yhat_std": 2.2473841521571956,
+      "yhat_lower": 149.72155805231571,
+      "yhat_upper": 158.5313039287719
+    },
+    {
+      "ds": "2025-07-25 00:00:00",
+      "yhat_ensemble": 154.95445297226712,
+      "yhat_arima": 151.51206814029655,
+      "yhat_prophet": 158.4500587426956,
+      "yhat_std": 3.468995301199527,
+      "yhat_lower": 148.15522218191606,
+      "yhat_upper": 161.75368376261818
+    },
+    {
+      "ds": "2025-07-28 00:00:00",
+      "yhat_ensemble": 148.05634318714397,
+      "yhat_arima": 149.1018681285433,
+      "yhat_prophet": 146.99465392325354,
+      "yhat_std": 1.0536071026448752,
+      "yhat_lower": 145.99127326596002,
+      "yhat_upper": 150.1214131083279
+    },
+    {
+      "ds": "2025-07-29 00:00:00",
+      "yhat_ensemble": 138.3301183785728,
+      "yhat_arima": 157.23767626394383,
+      "yhat_prophet": 119.13024048142954,
+      "yhat_std": 19.053717891257143,
+      "yhat_lower": 100.98483131170879,
+      "yhat_upper": 175.6754054454368
+    },
+    {
+      "ds": "2025-07-30 00:00:00",
+      "yhat_ensemble": 111.45795752558561,
+      "yhat_arima": 146.32328702774657,
+      "yhat_prophet": 76.05359312572375,
+      "yhat_std": 35.13484695101141,
+      "yhat_lower": 42.593657501603246,
+      "yhat_upper": 180.32225754956798
+    },
+    {
+      "ds": "2025-07-31 00:00:00",
+      "yhat_ensemble": 91.1254672156741,
+      "yhat_arima": 111.55123900211282,
+      "yhat_prophet": 70.38390309448398,
+      "yhat_std": 20.58366795381442,
+      "yhat_lower": 50.781478026197846,
+      "yhat_upper": 131.46945640515037
+    },
+    {
+      "ds": "2025-08-01 00:00:00",
+      "yhat_ensemble": 165.37969649924668,
+      "yhat_arima": 166.71973370117556,
+      "yhat_prophet": 164.0189416724919,
+      "yhat_std": 1.3503960143418254,
+      "yhat_lower": 162.7329203111367,
+      "yhat_upper": 168.02647268735666
+    },
+    {
+      "ds": "2025-08-04 00:00:00",
+      "yhat_ensemble": 155.70704530665256,
+      "yhat_arima": 151.76529422894527,
+      "yhat_prophet": 159.7097377670823,
+      "yhat_std": 3.9722217690685113,
+      "yhat_lower": 147.9214906392783,
+      "yhat_upper": 163.49259997402683
+    },
+    {
+      "ds": "2025-08-05 00:00:00",
+      "yhat_ensemble": 156.91190469331218,
+      "yhat_arima": 152.12901339619825,
+      "yhat_prophet": 161.76874180874665,
+      "yhat_std": 4.819864206274204,
+      "yhat_lower": 147.46497084901475,
+      "yhat_upper": 166.3588385376096
+    },
+    {
+      "ds": "2025-08-06 00:00:00",
+      "yhat_ensemble": 150.1906766798144,
+      "yhat_arima": 150.06988388547606,
+      "yhat_prophet": 150.31333698931664,
+      "yhat_std": 0.1217265519202897,
+      "yhat_lower": 149.95209263805063,
+      "yhat_upper": 150.42926072157817
+    },
+    {
+      "ds": "2025-08-07 00:00:00",
+      "yhat_ensemble": 140.2943614107436,
+      "yhat_arima": 157.8681007437124,
+      "yhat_prophet": 122.44892354749177,
+      "yhat_std": 17.709588598110315,
+      "yhat_lower": 105.58356775844737,
+      "yhat_upper": 175.0051550630398
+    },
+    {
+      "ds": "2025-08-08 00:00:00",
+      "yhat_ensemble": 113.50413113860279,
+      "yhat_arima": 147.11632526814626,
+      "yhat_prophet": 79.37227619177094,
+      "yhat_std": 33.87202453818766,
+      "yhat_lower": 47.11496304375497,
+      "yhat_upper": 179.8932992334506
+    },
+    {
+      "ds": "2025-08-11 00:00:00",
+      "yhat_ensemble": 93.983077753076,
+      "yhat_arima": 113.95479688498529,
+      "yhat_prophet": 73.70258616059058,
+      "yhat_std": 20.12610536219735,
+      "yhat_lower": 54.535911243169195,
+      "yhat_upper": 133.4302442629828
+    },
+    {
+      "ds": "2025-08-12 00:00:00",
+      "yhat_ensemble": 167.11987927083456,
+      "yhat_arima": 166.90544899921207,
+      "yhat_prophet": 167.33762473841756,
+      "yhat_std": 0.21608786960274529,
+      "yhat_lower": 166.69634704641317,
+      "yhat_upper": 167.54341149525595
+    },
+    {
+      "ds": "2025-08-13 00:00:00",
+      "yhat_ensemble": 157.79720380424925,
+      "yhat_arima": 152.64563256434218,
+      "yhat_prophet": 163.0284208331379,
+      "yhat_std": 5.191394134397854,
+      "yhat_lower": 147.62207130082945,
+      "yhat_upper": 167.97233630766905
+    },
+    {
+      "ds": "2025-08-14 00:00:00",
+      "yhat_ensemble": 158.95745277103427,
+      "yhat_arima": 152.92081008984377,
+      "yhat_prophet": 165.0874248747937,
+      "yhat_std": 6.083307392474964,
+      "yhat_lower": 147.03417028178333,
+      "yhat_upper": 170.8807352602852
+    },
+    {
+      "ds": "2025-08-15 00:00:00",
+      "yhat_ensemble": 152.21528590098393,
+      "yhat_arima": 150.82012166217783,
+      "yhat_prophet": 153.63202005533304,
+      "yhat_std": 1.405949196577609,
+      "yhat_lower": 149.4596254756918,
+      "yhat_upper": 154.97094632627605
+    },
+    {
+      "ds": "2025-08-18 00:00:00",
+      "yhat_ensemble": 142.33916531902122,
+      "yhat_arima": 158.65842042860436,
+      "yhat_prophet": 125.76760661345448,
+      "yhat_std": 16.44540690757494,
+      "yhat_lower": 110.10616778017433,
+      "yhat_upper": 174.5721628578681
+    },
+    {
+      "ds": "2025-08-19 00:00:00",
+      "yhat_ensemble": 115.53922646735063,
+      "yhat_arima": 147.8873756079648,
+      "yhat_prophet": 82.6909592578181,
+      "yhat_std": 32.59820817507335,
+      "yhat_lower": 51.64673844420686,
+      "yhat_upper": 179.43171449049441
+    },
+    {
+      "ds": "2025-08-20 00:00:00",
+      "yhat_ensemble": 95.92193084213929,
+      "yhat_arima": 114.53482804290769,
+      "yhat_prophet": 77.0212692266416,
+      "yhat_std": 18.756779408133042,
+      "yhat_lower": 59.158643202198526,
+      "yhat_upper": 132.68521848208005
+    },
+    {
+      "ds": "2025-08-21 00:00:00",
+      "yhat_ensemble": 169.19127563025046,
+      "yhat_arima": 167.74854871360068,
+      "yhat_prophet": 170.65630780450232,
+      "yhat_std": 1.4538795454508175,
+      "yhat_lower": 166.34167172116685,
+      "yhat_upper": 172.04087953933407
+    },
+    {
+      "ds": "2025-08-22 00:00:00",
+      "yhat_ensemble": 159.82708961394292,
+      "yhat_arima": 153.40634318149407,
+      "yhat_prophet": 166.3471038991784,
+      "yhat_std": 6.470380358842164,
+      "yhat_lower": 147.14514411061228,
+      "yhat_upper": 172.50903511727356
+    }
+  ],
+  "alertas": [
+    {
+      "tipo": "ALTA_INCERTIDUMBRE",
+      "severidad": "MEDIA",
+      "fecha": "2025-07-30",
+      "valor_predicho": 111.5,
+      "incertidumbre": 35.1,
+      "mensaje": "Alta incertidumbre: ±35.1 llamadas (31.5% de la predicción)",
+      "accion": "Monitorear de cerca, mantener personal de contingencia",
+      "confianza": 0.6
+    }
+  ],
+  "resumen_estadistico": {
+    "promedio_diario": 140.02703255481146,
+    "maximo_dia": 169.19127563025046,
+    "minimo_dia": 91.1254672156741,
+    "desviacion_estandar": 24.47629551162355,
+    "total_llamadas_periodo": 3920.756911534721,
+    "dia_pico": "Thursday 2025-08-21",
+    "alertas_criticas": 0,
+    "alertas_altas": 0
+  }
+}
