@@ -38,6 +38,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger('CEAPSI_APP')
 
+# Importar sistema de autenticación
+try:
+    from auth import AuthManager
+    AUTH_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar auth: {e}")
+    AUTH_AVAILABLE = False
+
 # Importar módulos del sistema con manejo de errores
 try:
     from dashboard_comparacion import DashboardValidacionCEAPSI
@@ -1423,6 +1431,34 @@ def mostrar_ayuda_contextual():
 
 def main():
     """Función principal"""
+    
+    # Sistema de autenticación
+    if AUTH_AVAILABLE:
+        try:
+            auth_manager = AuthManager()
+            
+            # Verificar autenticación
+            if not auth_manager.require_auth():
+                st.stop()
+            
+            # Mostrar información del usuario y logout en sidebar
+            user_info = auth_manager.get_user_info()
+            if user_info:
+                with st.sidebar:
+                    st.markdown("---")
+                    st.markdown("### 👤 Usuario Actual")
+                    st.markdown(f"**{user_info['name']}**")
+                    st.caption(f"@{user_info['username']}")
+                    
+                    # Botón de logout
+                    if st.button("🚪 Cerrar Sesión", key="logout_btn", use_container_width=True):
+                        auth_manager.logout()
+                        st.rerun()
+                        
+        except Exception as e:
+            logger.error(f"Error en sistema de autenticación: {e}")
+            st.error("Error en el sistema de autenticación")
+            st.stop()
     
     # Mostrar sección de carga de archivos
     mostrar_seccion_carga_archivos()

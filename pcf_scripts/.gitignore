@@ -55,6 +55,11 @@ datos_prophet_*.csv
 # Streamlit
 .streamlit/secrets.toml
 
+# Authentication
+config.yaml
+auth_config.yaml
+*_credentials.yaml
+
 # Backup files
 *.backup
 
