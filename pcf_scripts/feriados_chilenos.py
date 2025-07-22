@@ -887,12 +887,22 @@ def mostrar_analisis_cargo_feriados():
                         df = df_llamadas.copy()
                     
                     # Simular asignación de cargos para demo
-                    if 'TELEFONO' in df.columns:
-                        telefonos_unicos = df['TELEFONO'].unique()
-                        cargo_mapping = {tel: np.random.choice(cargos_ejemplo) for tel in telefonos_unicos}
-                        df['CARGO'] = df['TELEFONO'].map(cargo_mapping)
-                    else:
-                        df['CARGO'] = np.random.choice(cargos_ejemplo, len(df))
+                    try:
+                        if 'TELEFONO' in df.columns:
+                            telefonos_unicos = df['TELEFONO'].unique()
+                            cargo_mapping = {tel: np.random.choice(cargos_ejemplo) for tel in telefonos_unicos}
+                            df['CARGO'] = df['TELEFONO'].map(cargo_mapping)
+                        else:
+                            # Asegurar que el array tenga exactamente la misma longitud que el DataFrame
+                            df_len = len(df)
+                            if df_len > 0:
+                                df['CARGO'] = [np.random.choice(cargos_ejemplo) for _ in range(df_len)]
+                            else:
+                                df['CARGO'] = []
+                    except Exception as e:
+                        logger.warning(f"Error asignando cargos simulados: {e}")
+                        # Fallback: asignar cargo fijo
+                        df['CARGO'] = 'Secretaria'
                 else:
                     # Integrar datos reales de usuarios
                     st.info("🔗 Integrando datos de usuarios con llamadas...")
