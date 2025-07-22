@@ -60,6 +60,13 @@ except ImportError as e:
     logger.warning(f"No se pudo importar optimizacion_hiperparametros: {e}")
     HYPEROPT_AVAILABLE = False
 
+try:
+    from feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
+    FERIADOS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar feriados_chilenos: {e}")
+    FERIADOS_AVAILABLE = False
+
 # Configuración de la página principal
 st.set_page_config(
     page_title="CEAPSI - Sistema PCF",
@@ -1157,6 +1164,16 @@ def mostrar_ayuda_contextual():
             • Guardar resultados
             """)
         
+        elif pagina_actual == '🇨🇱 Feriados Chilenos':
+            st.info("""
+            **🇨🇱 Feriados Chilenos**
+            
+            • Calendario de feriados
+            • Análisis de impacto
+            • Patrones temporales
+            • Recomendaciones
+            """)
+        
         elif pagina_actual == '👥 Análisis de Usuarios':
             st.info("""
             **👥 Análisis de Usuarios**
@@ -1221,7 +1238,8 @@ def main():
         opciones_navegacion = [
             "🏠 Inicio", 
             "📊 Dashboard", 
-            "🔧 Preparación de Datos", 
+            "🔧 Preparación de Datos",
+            "🇨🇱 Feriados Chilenos",
             "🎯 Optimización ML", 
             "👥 Análisis de Usuarios", 
             "ℹ️ Información"
@@ -1263,6 +1281,12 @@ def main():
             mostrar_preparacion_datos()
         else:
             st.error("⚠️ Módulo de preparación de datos no disponible")
+    elif pagina == "🇨🇱 Feriados Chilenos":
+        if FERIADOS_AVAILABLE:
+            mostrar_analisis_feriados_chilenos()
+        else:
+            st.error("⚠️ Módulo de feriados chilenos no disponible")
+            st.info("Verifica que el archivo feriadoschile.csv esté en el directorio del proyecto")
     elif pagina == "🎯 Optimización ML":
         if HYPEROPT_AVAILABLE:
             mostrar_optimizacion_hiperparametros()
@@ -1286,6 +1310,7 @@ def main():
         
         ### 🎯 Nuevas Funcionalidades:
         - **🔧 Preparación de Datos** - Carga CSV/Excel/JSON y API Reservo
+        - **🇨🇱 Feriados Chilenos** - Análisis conforme normativa nacional
         - **🎯 Optimización ML** - Tuning avanzado de hiperparámetros
         - **👥 Análisis de Usuarios** - Mapeo Alodesk-Reservo
         
@@ -1301,6 +1326,13 @@ def main():
         - `uuid_reservo`: ID único en Reservo
         - `username_alodesk`: Usuario en Alodesk (opcional)
         - `anexo`: Extensión telefónica (opcional)
+        
+        ### 🇨🇱 Análisis de Feriados Chilenos:
+        - **Feriados Nacionales**: Año Nuevo, Fiestas Patrias, Navidad
+        - **Feriados Religiosos**: Viernes/Sábado Santo, Virgen del Carmen
+        - **Feriados Cívicos**: Glorias Navales, Día del Trabajo
+        - **Análisis de Impacto**: Variaciones en volumen de llamadas
+        - **Planificación**: Recomendaciones de recursos por feriados
         """)
 
 def mostrar_analisis_usuarios():

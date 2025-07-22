@@ -16,6 +16,13 @@ import os
 from pathlib import Path
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 
+# Importar gestor de feriados
+try:
+    from feriados_chilenos import GestorFeriadosChilenos
+    FERIADOS_DISPONIBLES = True
+except ImportError:
+    FERIADOS_DISPONIBLES = False
+
 # Configuración de la página
 st.set_page_config(
     page_title="CEAPSI - Validación de Modelos de Llamadas",
@@ -919,6 +926,11 @@ class DashboardValidacionCEAPSI:
         
         st.markdown("---")
         
+        # Análisis de feriados chilenos
+        if FERIADOS_DISPONIBLES:
+            self.mostrar_analisis_feriados_dashboard(tipo_llamada)
+            st.markdown("---")
+        
         # Heatmaps de patrones temporales
         self.mostrar_heatmaps_patrones_temporales(tipo_llamada)
         
@@ -1407,6 +1419,198 @@ class DashboardValidacionCEAPSI:
         except Exception as e:
             st.error(f"Error creando resultados de ejemplo: {e}")
             return None, None
+    
+    def mostrar_analisis_feriados_dashboard(self, tipo_llamada):
+        """Muestra análisis de feriados chilenos integrado en el dashboard"""
+        
+        st.subheader("🇨🇱 Análisis de Feriados Chilenos")
+        
+        try:
+            # Inicializar gestor de feriados
+            gestor_feriados = GestorFeriadosChilenos()
+            
+            # Cargar datos históricos
+            df_historico = self.cargar_datos_historicos(tipo_llamada)
+            
+            if df_historico is not None and len(df_historico) > 0:
+                # Marcar feriados en los datos
+                df_con_feriados = gestor_feriados.marcar_feriados_en_dataframe(df_historico, 'fecha')
+                
+                # Obtener métricas de feriados
+                metricas_feriados = gestor_feriados.obtener_metricas_feriados(df_con_feriados)
+                
+                # Mostrar métricas principales
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric(
+                        "🎊 Llamadas en Feriados",
+                        f"{metricas_feriados['llamadas_feriados']:,}",
+                        f"{metricas_feriados['porcentaje_feriados']:.1f}% del total"
+                    )
+                
+                with col2:
+                    st.metric(
+                        "📅 Promedio Día Normal",
+                        f"{metricas_feriados['promedio_dia_normal']:.0f}",
+                        "llamadas/día"
+                    )
+                
+                with col3:
+                    variacion = metricas_feriados['variacion_feriado_pct']
+                    st.metric(
+                        "🏖️ Promedio Feriado",
+                        f"{metricas_feriados['promedio_feriado']:.0f}",
+                        f"{variacion:+.1f}%"
+                    )
+                
+                with col4:
+                    variacion_pre = metricas_feriados['variacion_pre_feriado_pct']
+                    st.metric(
+                        "📋 Promedio Pre-Feriado",
+                        f"{metricas_feriados['promedio_pre_feriado']:.0f}",
+                        f"{variacion_pre:+.1f}%"
+                    )
+                
+                # Gráfico de patrones por tipo de día
+                st.subheader("📊 Patrones por Tipo de Día")
+                
+                # Analizar patrones
+                analisis_feriados = gestor_feriados.analizar_patrones_feriados(df_con_feriados)
+                
+                if analisis_feriados['por_tipo_dia'] is not None:
+                    # Crear gráfico de barras
+                    df_tipos = analisis_feriados['por_tipo_dia'].reset_index()
+                    df_tipos.columns = ['tipo_dia', 'cantidad_llamadas']
+                    
+                    # Definir colores por tipo de día
+                    color_map = {
+                        'Día Laboral': '#2E8B57',
+                        'Fin de Semana': '#4682B4', 
+                        'Feriado (Religioso)': '#DC143C',
+                        'Feriado (Cívico)': '#FF8C00',
+                        'Feriado (Cultural)': '#9370DB',
+                        'Pre-Feriado': '#FFD700',
+                        'Post-Feriado': '#87CEEB',
+                        'Fin de Semana Largo': '#20B2AA'
+                    }
+                    
+                    fig_feriados = go.Figure()
+                    
+                    for _, row in df_tipos.iterrows():
+                        tipo = row['tipo_dia']
+                        color = color_map.get(tipo, '#808080')
+                        
+                        fig_feriados.add_trace(go.Bar(
+                            x=[tipo],
+                            y=[row['cantidad_llamadas']],
+                            name=tipo,
+                            marker_color=color,
+                            showlegend=False
+                        ))
+                    
+                    fig_feriados.update_layout(
+                        title=f'Distribución de Llamadas {tipo_llamada} por Tipo de Día',
+                        xaxis_title='Tipo de Día',
+                        yaxis_title='Cantidad de Llamadas',
+                        height=400,
+                        xaxis={'tickangle': 45}
+                    )
+                    
+                    st.plotly_chart(fig_feriados, use_container_width=True)
+                
+                # Top feriados más activos
+                if metricas_feriados['feriados_mas_activos']:
+                    st.subheader("🏆 Feriados con Mayor Actividad")
+                    
+                    df_top_feriados = pd.DataFrame(metricas_feriados['feriados_mas_activos'])
+                    
+                    if not df_top_feriados.empty:
+                        # Mostrar en tabla
+                        st.dataframe(
+                            df_top_feriados[['fecha_solo', 'feriado_descripcion', 'llamadas']], 
+                            use_container_width=True
+                        )
+                
+                # Insights y recomendaciones
+                st.subheader("💡 Insights de Feriados")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    variacion = metricas_feriados['variacion_feriado_pct']
+                    
+                    if variacion > 15:
+                        st.warning(f"""
+                        ⚠️ **Alto Incremento en Feriados**
+                        
+                        Las llamadas aumentan {variacion:.1f}% en feriados.
+                        
+                        **Recomendaciones:**
+                        • Reforzar personal en feriados principales
+                        • Preparar campañas especiales
+                        • Revisar horarios de atención
+                        """)
+                    elif variacion < -15:
+                        st.success(f"""
+                        ✅ **Reducción en Feriados**
+                        
+                        Las llamadas disminuyen {abs(variacion):.1f}% en feriados.
+                        
+                        **Oportunidades:**
+                        • Programar mantenimiento
+                        • Reducir personal operativo
+                        • Capacitación del equipo
+                        """)
+                    else:
+                        st.info(f"""
+                        📊 **Patrón Estable**
+                        
+                        Variación moderada de {variacion:+.1f}% en feriados.
+                        
+                        **Acciones:**
+                        • Mantener operación normal
+                        • Monitorear tendencias
+                        • Optimizar recursos
+                        """)
+                
+                with col2:
+                    # Mostrar calendario de próximos feriados
+                    st.markdown("**📅 Próximos Feriados (60 días)**")
+                    
+                    fecha_actual = datetime.now().date()
+                    fecha_limite = fecha_actual + timedelta(days=60)
+                    
+                    proximos_feriados = gestor_feriados.feriados_df[
+                        (gestor_feriados.feriados_df['fecha'].dt.date >= fecha_actual) &
+                        (gestor_feriados.feriados_df['fecha'].dt.date <= fecha_limite)
+                    ].head(5)
+                    
+                    if not proximos_feriados.empty:
+                        for _, feriado in proximos_feriados.iterrows():
+                            dias_restantes = (feriado['fecha'].date() - fecha_actual).days
+                            st.write(f"• **{feriado['descripcion']}**")
+                            st.write(f"  📅 {feriado['fecha'].strftime('%d/%m/%Y')} ({dias_restantes} días)")
+                    else:
+                        st.write("No hay feriados próximos en los siguientes 60 días")
+            
+            else:
+                st.info("💡 Se necesitan datos históricos para el análisis de feriados")
+                
+                # Mostrar calendario de feriados del año actual
+                año_actual = datetime.now().year
+                fig_calendario = gestor_feriados.generar_calendario_visual(año_actual)
+                st.plotly_chart(fig_calendario, use_container_width=True)
+        
+        except Exception as e:
+            st.error(f"Error en análisis de feriados: {e}")
+            # Mostrar al menos el calendario
+            try:
+                gestor_feriados = GestorFeriadosChilenos()
+                fig_calendario = gestor_feriados.generar_calendario_visual()
+                st.plotly_chart(fig_calendario, use_container_width=True)
+            except:
+                st.info("No se pudo cargar el análisis de feriados")
 
 def main():
     """Función principal del dashboard de validación"""
