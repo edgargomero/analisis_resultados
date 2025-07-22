@@ -82,9 +82,9 @@ class PreparadorDatos:
         columnas_requeridas = {
             'fecha': ['fecha', 'date', 'fecha_llamada', 'call_date'],
             'hora': ['hora', 'time', 'hora_llamada', 'call_time'],
-            'tipo': ['tipo', 'type', 'tipo_llamada', 'call_type', 'direccion'],
+            'tipo': ['tipo', 'type', 'tipo_llamada', 'call_type', 'direccion', 'sentido'],
             'duracion': ['duracion', 'duration', 'duracion_segundos', 'call_duration'],
-            'agente': ['agente', 'agent', 'usuario', 'user', 'operador']
+            'agente': ['agente', 'agent', 'usuario', 'user', 'operador', 'telefono']
         }
         
         columnas_encontradas = {}
@@ -107,7 +107,55 @@ class PreparadorDatos:
             'valido': len(columnas_faltantes) == 0,
             'columnas_encontradas': columnas_encontradas,
             'columnas_faltantes': columnas_faltantes,
-            'total_registros': len(df)
+            'total_registros': len(df),
+            'tipo_datos': 'llamadas'
+        }
+    
+    def validar_datos_usuarios_mapping(self, df: pd.DataFrame) -> Dict[str, any]:
+        """Valida el DataFrame de mapeo de usuarios entre Alodesk y Reservo"""
+        columnas_requeridas = {
+            'username_reservo': ['username_reservo', 'usuario_reservo', 'reservo_user'],
+            'cargo': ['cargo', 'position', 'role', 'puesto'],
+            'uuid_reservo': ['uuid_reservo', 'reservo_id', 'id_reservo'],
+            'id_usuario_alodesk': ['id_usuario_alodesk', 'alodesk_id', 'user_id_alodesk'],
+            'username_alodesk': ['username_alodesk', 'usuario_alodesk', 'alodesk_user'],
+            'anexo': ['anexo', 'extension', 'phone_ext']
+        }
+        
+        columnas_encontradas = {}
+        columnas_faltantes = []
+        
+        df_columns_lower = [col.lower() for col in df.columns]
+        
+        for campo, variantes in columnas_requeridas.items():
+            encontrado = False
+            for variante in variantes:
+                if variante.lower() in df_columns_lower:
+                    idx = df_columns_lower.index(variante.lower())
+                    columnas_encontradas[campo] = df.columns[idx]
+                    encontrado = True
+                    break
+            if not encontrado:
+                columnas_faltantes.append(campo)
+        
+        # Análisis específico del mapeo de usuarios
+        usuarios_con_alodesk = 0
+        usuarios_solo_reservo = 0
+        
+        if 'username_alodesk' in columnas_encontradas:
+            col_alodesk = columnas_encontradas['username_alodesk']
+            usuarios_con_alodesk = df[col_alodesk].notna().sum()
+            usuarios_solo_reservo = df[col_alodesk].isna().sum()
+        
+        return {
+            'valido': 'username_reservo' in columnas_encontradas and 'cargo' in columnas_encontradas,
+            'columnas_encontradas': columnas_encontradas,
+            'columnas_faltantes': columnas_faltantes,
+            'total_registros': len(df),
+            'tipo_datos': 'usuarios_mapping',
+            'usuarios_con_alodesk': usuarios_con_alodesk,
+            'usuarios_solo_reservo': usuarios_solo_reservo,
+            'cargos_unicos': df[columnas_encontradas.get('cargo', df.columns[0])].nunique() if columnas_encontradas else 0
         }
     
     def estandarizar_datos_llamadas(self, df: pd.DataFrame, mapeo_columnas: Dict[str, str]) -> pd.DataFrame:
@@ -140,6 +188,33 @@ class PreparadorDatos:
         # Convertir duración a segundos si es necesario
         if 'duracion' in df_estandar.columns:
             df_estandar['duracion'] = pd.to_numeric(df_estandar['duracion'], errors='coerce')
+        
+        return df_estandar
+    
+    def estandarizar_datos_usuarios(self, df: pd.DataFrame, mapeo_columnas: Dict[str, str]) -> pd.DataFrame:
+        """Estandariza el DataFrame de usuarios al formato esperado"""
+        df_estandar = pd.DataFrame()
+        
+        # Mapear columnas
+        for campo_estandar, columna_original in mapeo_columnas.items():
+            if columna_original in df.columns:
+                df_estandar[campo_estandar] = df[columna_original]
+        
+        # Limpiar datos de usuarios
+        if 'cargo' in df_estandar.columns:
+            df_estandar['cargo'] = df_estandar['cargo'].astype(str).str.upper().str.strip()
+        
+        if 'username_reservo' in df_estandar.columns:
+            df_estandar['username_reservo'] = df_estandar['username_reservo'].astype(str).str.strip()
+        
+        if 'username_alodesk' in df_estandar.columns:
+            # Marcar usuarios que no tienen mapeo con Alodesk
+            df_estandar['tiene_alodesk'] = df_estandar['username_alodesk'].notna()
+        
+        # Crear campo combinado para análisis
+        df_estandar['usuario_display'] = df_estandar.get('username_alodesk', '').fillna(
+            df_estandar.get('username_reservo', '')
+        )
         
         return df_estandar
     
@@ -254,7 +329,7 @@ def mostrar_preparacion_datos():
         with col2:
             tipo_datos = st.selectbox(
                 "Tipo de datos",
-                ["Llamadas", "Citas", "Usuarios", "Otro"]
+                ["Llamadas", "Citas", "Usuarios Mapping", "Usuarios", "Otro"]
             )
         
         if archivo_cargado is not None:
@@ -356,12 +431,107 @@ def mostrar_preparacion_datos():
                             else:
                                 st.error("Por favor selecciona al menos una columna para mapear")
                 
+                # Si son datos de mapeo de usuarios
+                elif tipo_datos == "Usuarios Mapping":
+                    st.subheader("👥 Validación de Mapeo de Usuarios")
+                    
+                    validacion = preparador.validar_datos_usuarios_mapping(df)
+                    
+                    if validacion['valido']:
+                        st.success("✅ Archivo de mapeo de usuarios válido")
+                        
+                        # Mostrar estadísticas del mapeo
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Total Usuarios", validacion['total_registros'])
+                        with col2:
+                            st.metric("Con Alodesk", validacion['usuarios_con_alodesk'])
+                        with col3:
+                            st.metric("Solo Reservo", validacion['usuarios_solo_reservo'])
+                        with col4:
+                            st.metric("Cargos Únicos", validacion['cargos_unicos'])
+                        
+                        # Mostrar mapeo de columnas
+                        st.write("**Mapeo de columnas detectado:**")
+                        for campo, columna in validacion['columnas_encontradas'].items():
+                            st.write(f"- {campo}: `{columna}`")
+                        
+                        # Análisis de cargos
+                        if 'cargo' in validacion['columnas_encontradas']:
+                            col_cargo = validacion['columnas_encontradas']['cargo']
+                            st.write("**Distribución de cargos:**")
+                            distribución_cargos = df[col_cargo].value_counts()
+                            for cargo, cantidad in distribución_cargos.items():
+                                st.write(f"- {cargo}: {cantidad} usuarios")
+                        
+                        # Botón para estandarizar y guardar
+                        if st.button("Estandarizar y Guardar Mapeo"):
+                            df_estandar = preparador.estandarizar_datos_usuarios(
+                                df, 
+                                validacion['columnas_encontradas']
+                            )
+                            
+                            ruta_guardado = preparador.guardar_datos_preparados(
+                                df_estandar,
+                                "usuarios_mapping_preparado"
+                            )
+                            
+                            st.success(f"✅ Mapeo de usuarios guardado exitosamente")
+                            st.info(f"Archivo: `{Path(ruta_guardado).name}`")
+                            
+                            # Mostrar resumen de datos estandarizados
+                            with st.expander("Mapeo estandarizado"):
+                                st.dataframe(df_estandar.head())
+                                
+                                # Estadísticas adicionales
+                                st.write("**Resumen del mapeo:**")
+                                if 'tiene_alodesk' in df_estandar.columns:
+                                    usuarios_completos = df_estandar['tiene_alodesk'].sum()
+                                    st.write(f"- {usuarios_completos} usuarios tienen mapeo completo con Alodesk")
+                                    st.write(f"- {len(df_estandar) - usuarios_completos} usuarios solo en Reservo")
+                                
+                    else:
+                        st.warning("⚠️ El archivo no parece ser un mapeo de usuarios válido")
+                        st.write("**Se esperan las columnas:**")
+                        st.write("- username_reservo: Usuario en Reservo")
+                        st.write("- cargo: Cargo o rol del usuario")
+                        st.write("- uuid_reservo: ID único en Reservo")
+                        st.write("- username_alodesk: Usuario en Alodesk (opcional)")
+                        
+                        # Permitir mapeo manual para usuarios
+                        st.subheader("Mapeo Manual de Columnas")
+                        
+                        mapeo_manual = {}
+                        columnas_disponibles = [''] + list(df.columns)
+                        
+                        campos_usuario = ['username_reservo', 'cargo', 'uuid_reservo', 'username_alodesk', 'anexo']
+                        for campo in campos_usuario:
+                            mapeo_manual[campo] = st.selectbox(
+                                f"Columna para {campo}",
+                                columnas_disponibles,
+                                key=f"map_user_{campo}"
+                            )
+                        
+                        if st.button("Aplicar Mapeo de Usuarios"):
+                            # Filtrar mapeos vacíos
+                            mapeo_final = {k: v for k, v in mapeo_manual.items() if v}
+                            
+                            if mapeo_final:
+                                df_estandar = preparador.estandarizar_datos_usuarios(df, mapeo_final)
+                                ruta_guardado = preparador.guardar_datos_preparados(
+                                    df_estandar,
+                                    "usuarios_mapping_manual"
+                                )
+                                st.success(f"✅ Mapeo guardado con configuración manual")
+                            else:
+                                st.error("Por favor selecciona al menos username_reservo y cargo")
+                
                 # Para otros tipos de datos
                 else:
                     if st.button(f"Guardar Datos de {tipo_datos}"):
                         ruta_guardado = preparador.guardar_datos_preparados(
                             df,
-                            tipo_datos.lower()
+                            tipo_datos.lower().replace(' ', '_')
                         )
                         st.success(f"✅ Datos guardados exitosamente")
                         st.info(f"Archivo: `{Path(ruta_guardado).name}`")
