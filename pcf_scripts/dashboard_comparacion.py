@@ -1031,7 +1031,7 @@ class DashboardValidacionCEAPSI:
                 x=[dias_semana[i] for i in sorted(matriz_semanal.columns)],
                 y=[f'Semana {int(semana)}' for semana in matriz_semanal.index],
                 colorscale='Blues',
-                hoveringmode='closest',
+                hoverinfo='all',
                 hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
                 colorbar=dict(title="Número de Llamadas")
             ))
@@ -1100,7 +1100,7 @@ class DashboardValidacionCEAPSI:
                 x=[f'{h:02d}:00' for h in sorted(matriz_horaria.columns)],
                 y=[str(fecha) for fecha in matriz_horaria.index],
                 colorscale='Viridis',
-                hoveringmode='closest',
+                hoverinfo='all',
                 hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
                 colorbar=dict(title="Número de Llamadas")
             ))
@@ -1174,7 +1174,7 @@ class DashboardValidacionCEAPSI:
                 x=[f'{h:02d}:00' for h in sorted(matriz_combinada.columns)],
                 y=[dias_semana[i] for i in matriz_combinada.index],
                 colorscale='RdYlBu_r',
-                hoveringmode='closest',
+                hoverinfo='all',
                 hovertemplate='<b>%{y}</b><br>%{x}<br>Llamadas: %{z}<extra></extra>',
                 colorbar=dict(title="Promedio de Llamadas")
             ))
