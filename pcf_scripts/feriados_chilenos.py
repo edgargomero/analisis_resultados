@@ -318,8 +318,28 @@ class GestorFeriadosChilenos:
         
         # Análisis temporal (patrones horarios en feriados vs días normales)
         if 'hora' in df.columns:
-            df['hora_num'] = pd.to_datetime(df['hora'], format='%H:%M:%S').dt.hour
-            analisis_horario = df.groupby(['es_feriado', 'hora_num']).size().unstack(fill_value=0)
+            try:
+                # Intentar extraer hora de diferentes formatos
+                if df['hora'].dtype == 'object':
+                    # Si contiene fecha completa, extraer solo la hora
+                    if df['hora'].str.contains(' ').any():
+                        df['hora_num'] = pd.to_datetime(df['hora'], errors='coerce').dt.hour
+                    else:
+                        # Solo formato de hora
+                        df['hora_num'] = pd.to_datetime(df['hora'], format='%H:%M:%S', errors='coerce').dt.hour
+                else:
+                    # Si ya es datetime, extraer hora directamente
+                    df['hora_num'] = pd.to_datetime(df['hora'], errors='coerce').dt.hour
+                
+                # Filtrar valores nulos antes del análisis
+                df_valido = df.dropna(subset=['hora_num'])
+                if len(df_valido) > 0:
+                    analisis_horario = df_valido.groupby(['es_feriado', 'hora_num']).size().unstack(fill_value=0)
+                else:
+                    analisis_horario = None
+            except Exception as e:
+                logger.warning(f"Error procesando columna hora: {e}")
+                analisis_horario = None
         else:
             analisis_horario = None
         
