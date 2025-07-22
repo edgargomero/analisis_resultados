@@ -1146,7 +1146,6 @@ class DashboardValidacionCEAPSI:
             
             for rec in recomendaciones:
                 st.write(f"• {rec}")
-        )
     
     def mostrar_heatmaps_patrones_temporales(self, tipo_llamada):
         """Muestra heatmap simplificado de patrones semanales"""
