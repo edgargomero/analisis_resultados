@@ -1421,9 +1421,25 @@ class DashboardValidacionCEAPSI:
             return None, None
     
     def mostrar_analisis_feriados_dashboard(self, tipo_llamada):
-        """Muestra análisis de feriados chilenos integrado en el dashboard"""
+        """Muestra análisis de feriados chilenos integrado en el dashboard con tratamiento diferenciado"""
         
         st.subheader("🇨🇱 Análisis de Feriados Chilenos")
+        
+        # Mostrar información sobre el tratamiento diferenciado
+        if tipo_llamada.upper() in ['ENTRANTE', 'INBOUND', 'IN']:
+            st.info("""
+            📞 **Llamadas Entrantes**: Mantenemos TODOS los datos incluyendo feriados para entrenar el modelo.
+            
+            **Razón**: Las llamadas entrantes representan la demanda del cliente, que debe ser pronosticada 
+            independientemente de si es feriado o no, según la normativa chilena de call centers.
+            """)
+        else:
+            st.warning("""
+            📞 **Llamadas Salientes**: Se EXCLUYEN los feriados del entrenamiento del modelo.
+            
+            **Razón**: Las llamadas salientes dependen de la operación interna y no se realizan en feriados 
+            según la regulación laboral chilena.
+            """)
         
         try:
             # Inicializar gestor de feriados
@@ -1435,6 +1451,18 @@ class DashboardValidacionCEAPSI:
             if df_historico is not None and len(df_historico) > 0:
                 # Marcar feriados en los datos
                 df_con_feriados = gestor_feriados.marcar_feriados_en_dataframe(df_historico, 'fecha')
+                
+                # Aplicar filtrado según tipo de llamada para demostrar la lógica
+                if tipo_llamada.upper() in ['SALIENTE', 'OUTBOUND', 'OUT']:
+                    # Para llamadas salientes, mostrar datos filtrados para entrenamiento
+                    df_para_entrenamiento = gestor_feriados.filtrar_datos_para_entrenamiento(df_con_feriados, tipo_llamada)
+                    registros_filtrados = len(df_con_feriados) - len(df_para_entrenamiento)
+                    if registros_filtrados > 0:
+                        st.success(f"🔧 **Filtrado aplicado**: {registros_filtrados} días de feriados excluidos del entrenamiento")
+                else:
+                    # Para llamadas entrantes, mostrar que se mantienen todos los datos
+                    df_para_entrenamiento = df_con_feriados.copy()
+                    st.success(f"📊 **Datos completos**: {len(df_para_entrenamiento)} días mantenidos (incluyendo {len(df_con_feriados[df_con_feriados['es_feriado']])} feriados)")
                 
                 # Obtener métricas de feriados
                 metricas_feriados = gestor_feriados.obtener_metricas_feriados(df_con_feriados)

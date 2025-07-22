@@ -53,7 +53,7 @@ class SistemaMultiModeloCEAPSI:
         return config_default
     
     def cargar_datos_segmentados(self, tipo_llamada='ENTRANTE'):
-        """Carga datos segmentados por tipo de llamada"""
+        """Carga datos segmentados por tipo de llamada con filtrado de feriados según regulación chilena"""
         
         # Usar directorio actual del script
         from pathlib import Path
@@ -67,9 +67,32 @@ class SistemaMultiModeloCEAPSI:
             
             print(f"✅ Datos cargados: {len(df)} días de {tipo_llamada.lower()}")
             print(f"📅 Período: {df['ds'].min().date()} a {df['ds'].max().date()}")
-            print(f"📊 Promedio diario: {df['y'].mean():.1f} llamadas")
+            print(f"📊 Promedio diario antes filtrado: {df['y'].mean():.1f} llamadas")
             
-            return df
+            # Aplicar filtrado de feriados según normativa chilena
+            try:
+                from feriados_chilenos import GestorFeriadosChilenos
+                gestor_feriados = GestorFeriadosChilenos()
+                
+                # Filtrar datos para entrenamiento según tipo de llamada
+                df_filtrado = gestor_feriados.filtrar_datos_para_entrenamiento(df, tipo_llamada)
+                
+                if len(df_filtrado) < len(df):
+                    registros_filtrados = len(df) - len(df_filtrado)
+                    if tipo_llamada.lower() in ['saliente', 'outbound', 'out']:
+                        print(f"🇨🇱 Feriados chilenos filtrados: {registros_filtrados} días excluidos del entrenamiento (llamadas salientes)")
+                    else:
+                        print(f"🇨🇱 Llamadas entrantes: {len(df_filtrado)} registros mantenidos (incluyendo feriados para pronóstico de demanda)")
+                
+                print(f"📊 Promedio diario después filtrado: {df_filtrado['y'].mean():.1f} llamadas")
+                return df_filtrado
+                
+            except ImportError:
+                print("⚠️ Módulo de feriados chilenos no disponible, usando datos sin filtrar")
+                return df
+            except Exception as e:
+                print(f"⚠️ Error aplicando filtros de feriados: {e}, usando datos sin filtrar")
+                return df
             
         except FileNotFoundError:
             print(f"❌ No se encontró archivo: {archivo_datos}")

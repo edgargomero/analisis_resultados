@@ -61,7 +61,7 @@ except ImportError as e:
     HYPEROPT_AVAILABLE = False
 
 try:
-    from feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
+    from feriados_chilenos import mostrar_analisis_feriados_chilenos, mostrar_analisis_cargo_feriados, GestorFeriadosChilenos
     FERIADOS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar feriados_chilenos: {e}")
@@ -1283,7 +1283,14 @@ def main():
             st.error("⚠️ Módulo de preparación de datos no disponible")
     elif pagina == "🇨🇱 Feriados Chilenos":
         if FERIADOS_AVAILABLE:
-            mostrar_analisis_feriados_chilenos()
+            # Crear tabs para diferentes análisis de feriados
+            tab1, tab2 = st.tabs(["📊 Análisis General", "👥 Análisis por Cargo"])
+            
+            with tab1:
+                mostrar_analisis_feriados_chilenos()
+            
+            with tab2:
+                mostrar_analisis_cargo_feriados()
         else:
             st.error("⚠️ Módulo de feriados chilenos no disponible")
             st.info("Verifica que el archivo feriadoschile.csv esté en el directorio del proyecto")

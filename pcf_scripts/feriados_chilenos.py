@@ -151,8 +151,17 @@ class GestorFeriadosChilenos:
         """Obtiene información del feriado para una fecha específica"""
         return self.feriados_dict.get(fecha)
     
-    def marcar_feriados_en_dataframe(self, df: pd.DataFrame, columna_fecha: str = 'fecha') -> pd.DataFrame:
-        """Marca los feriados en un DataFrame con datos de llamadas"""
+    def marcar_feriados_en_dataframe(self, df: pd.DataFrame, columna_fecha: str = 'fecha', 
+                                     solo_salientes: bool = False) -> pd.DataFrame:
+        """
+        Marca los feriados en un DataFrame con datos de llamadas
+        
+        Args:
+            df: DataFrame con datos de llamadas
+            columna_fecha: Nombre de la columna de fecha
+            solo_salientes: Si True, solo marca feriados para llamadas salientes.
+                          Las entrantes mantienen todos los datos para pronóstico de demanda.
+        """
         if columna_fecha not in df.columns:
             logger.warning(f"Columna {columna_fecha} no encontrada en el DataFrame")
             return df
@@ -183,6 +192,28 @@ class GestorFeriadosChilenos:
         
         # Crear etiqueta descriptiva para análisis
         df_copy['tipo_dia'] = df_copy.apply(self._determinar_tipo_dia, axis=1)
+        
+        # LÓGICA DIFERENCIADA POR TIPO DE LLAMADA
+        if solo_salientes:
+            logger.info("Aplicando análisis de feriados solo a llamadas salientes")
+            # Para llamadas salientes, podemos filtrar/limpiar datos de feriados
+            df_copy['excluir_de_entrenamiento'] = df_copy['es_feriado'] | df_copy['pre_feriado'] | df_copy['post_feriado']
+        else:
+            # Para llamadas entrantes, mantenemos todos los datos ya que representan demanda real del cliente
+            # Los feriados son parte del patrón de demanda que queremos pronosticar
+            df_copy['excluir_de_entrenamiento'] = False
+            logger.info("Manteniendo todos los datos de feriados para análisis de demanda (llamadas entrantes)")
+        
+        # Crear campo de tratamiento para el entrenamiento
+        if 'SENTIDO' in df_copy.columns:
+            # Determinar tratamiento basado en dirección de llamada
+            df_copy['aplicar_filtro_feriados'] = (
+                (df_copy['SENTIDO'].str.lower().isin(['out', 'saliente', 'outbound'])) &
+                (df_copy['es_feriado'] | df_copy['pre_feriado'] | df_copy['post_feriado'])
+            )
+        else:
+            # Si no hay columna SENTIDO, usar el parámetro solo_salientes
+            df_copy['aplicar_filtro_feriados'] = df_copy['excluir_de_entrenamiento'] if solo_salientes else False
         
         return df_copy
     
@@ -411,6 +442,173 @@ class GestorFeriadosChilenos:
         feriados_activos = feriados_activos.sort_values('llamadas', ascending=False).head(5)
         
         return feriados_activos.to_dict('records')
+    
+    def filtrar_datos_para_entrenamiento(self, df: pd.DataFrame, tipo_llamada: str = 'entrante') -> pd.DataFrame:
+        """
+        Filtra datos para entrenamiento según el tipo de llamada y feriados
+        
+        Args:
+            df: DataFrame con datos marcados con feriados
+            tipo_llamada: 'entrante' o 'saliente'
+        
+        Returns:
+            DataFrame filtrado apropiadamente para entrenamiento
+        """
+        if 'aplicar_filtro_feriados' not in df.columns:
+            logger.warning("DataFrame no tiene marcadores de feriados. Aplicando primero marcar_feriados_en_dataframe()")
+            df = self.marcar_feriados_en_dataframe(df)
+        
+        if tipo_llamada.lower() in ['entrante', 'inbound', 'in']:
+            # Para llamadas entrantes: mantener TODOS los datos incluyendo feriados
+            # Los feriados son parte del patrón de demanda del cliente que queremos pronosticar
+            df_entrenamiento = df.copy()
+            logger.info(f"Entrenamiento ENTRANTE: Manteniendo {len(df_entrenamiento)} registros (incluyendo feriados)")
+            
+        elif tipo_llamada.lower() in ['saliente', 'outbound', 'out']:
+            # Para llamadas salientes: excluir feriados ya que dependen de operación interna
+            df_entrenamiento = df[~df['aplicar_filtro_feriados']].copy()
+            registros_excluidos = len(df) - len(df_entrenamiento)
+            logger.info(f"Entrenamiento SALIENTE: Excluyendo {registros_excluidos} registros de feriados. Manteniendo {len(df_entrenamiento)} registros")
+            
+        else:
+            logger.warning(f"Tipo de llamada no reconocido: {tipo_llamada}. Manteniendo todos los datos.")
+            df_entrenamiento = df.copy()
+        
+        return df_entrenamiento
+    
+    def analizar_patrones_por_cargo(self, df: pd.DataFrame, columna_cargo: str = 'CARGO') -> Dict:
+        """
+        Analiza patrones de llamadas por cargo/posición en relación a feriados
+        
+        Args:
+            df: DataFrame con datos de llamadas y cargos
+            columna_cargo: Nombre de la columna que contiene los cargos
+        """
+        if columna_cargo not in df.columns:
+            logger.warning(f"Columna {columna_cargo} no encontrada en el DataFrame")
+            return {}
+        
+        if 'es_feriado' not in df.columns:
+            df = self.marcar_feriados_en_dataframe(df)
+        
+        # Análisis general por cargo
+        analisis_cargo = df.groupby(columna_cargo).agg({
+            df.columns[0]: 'count',  # Contar registros
+        }).rename(columns={df.columns[0]: 'total_llamadas'})
+        
+        # Análisis de feriados por cargo
+        analisis_feriados_cargo = df[df['es_feriado'] == True].groupby(columna_cargo).agg({
+            df.columns[0]: 'count'
+        }).rename(columns={df.columns[0]: 'llamadas_feriados'})
+        
+        # Combinar análisis
+        analisis_combinado = analisis_cargo.join(analisis_feriados_cargo, how='left').fillna(0)
+        analisis_combinado['porcentaje_feriados'] = (
+            analisis_combinado['llamadas_feriados'] / analisis_combinado['total_llamadas'] * 100
+        )
+        
+        # Análisis por tipo de día y cargo
+        crosstab_cargo_tipo = pd.crosstab(df[columna_cargo], df['tipo_dia'], normalize='index') * 100
+        
+        # Análisis de productividad por cargo en diferentes tipos de día
+        if 'ATENDIDA' in df.columns:
+            # Calcular tasas de atención por cargo y tipo de día
+            df['atendida_num'] = (df['ATENDIDA'] == 'Si').astype(int)
+            
+            atencion_cargo_tipo = df.groupby([columna_cargo, 'tipo_dia'])['atendida_num'].agg(['mean', 'count']).reset_index()
+            atencion_cargo_tipo.columns = [columna_cargo, 'tipo_dia', 'tasa_atencion', 'cantidad_llamadas']
+            atencion_cargo_tipo['tasa_atencion'] = atencion_cargo_tipo['tasa_atencion'] * 100
+            
+            # Pivot para mejor visualización
+            atencion_pivot = atencion_cargo_tipo.pivot(index=columna_cargo, columns='tipo_dia', values='tasa_atencion')
+        else:
+            atencion_pivot = None
+        
+        # Ranking de cargos por actividad en feriados
+        ranking_feriados = analisis_combinado.sort_values('porcentaje_feriados', ascending=False)
+        
+        # Identificar cargos más/menos afectados por feriados
+        if len(analisis_combinado) > 0:
+            cargo_mas_afectado = ranking_feriados.index[0]
+            cargo_menos_afectado = ranking_feriados.index[-1]
+            
+            insights_cargos = {
+                'mas_afectado': {
+                    'cargo': cargo_mas_afectado,
+                    'porcentaje': ranking_feriados.loc[cargo_mas_afectado, 'porcentaje_feriados']
+                },
+                'menos_afectado': {
+                    'cargo': cargo_menos_afectado,
+                    'porcentaje': ranking_feriados.loc[cargo_menos_afectado, 'porcentaje_feriados']
+                }
+            }
+        else:
+            insights_cargos = {}
+        
+        return {
+            'resumen_por_cargo': analisis_combinado,
+            'distribucion_tipo_dia': crosstab_cargo_tipo,
+            'tasas_atencion_por_tipo': atencion_pivot,
+            'ranking_actividad_feriados': ranking_feriados,
+            'insights': insights_cargos,
+            'total_cargos': len(analisis_combinado),
+            'total_registros_analizados': len(df)
+        }
+    
+    def generar_recomendaciones_por_cargo(self, analisis_cargo: Dict) -> Dict[str, List[str]]:
+        """
+        Genera recomendaciones específicas por cargo basadas en el análisis de feriados
+        """
+        recomendaciones = {}
+        
+        if 'resumen_por_cargo' not in analisis_cargo:
+            return recomendaciones
+        
+        resumen = analisis_cargo['resumen_por_cargo']
+        
+        for cargo in resumen.index:
+            cargo_data = resumen.loc[cargo]
+            porcentaje_feriados = cargo_data['porcentaje_feriados']
+            total_llamadas = cargo_data['total_llamadas']
+            
+            recomendaciones_cargo = []
+            
+            # Recomendaciones basadas en actividad en feriados
+            if porcentaje_feriados > 20:
+                recomendaciones_cargo.append(f"📈 Alto volumen en feriados ({porcentaje_feriados:.1f}%): Programar personal adicional")
+                recomendaciones_cargo.append("🎯 Considerar incentivos especiales para feriados")
+                recomendaciones_cargo.append("📞 Monitorear de cerca la calidad de servicio")
+                
+            elif porcentaje_feriados < 5:
+                recomendaciones_cargo.append(f"📉 Baja actividad en feriados ({porcentaje_feriados:.1f}%): Oportunidad para capacitación")
+                recomendaciones_cargo.append("🔧 Ideal para mantenimiento de sistemas")
+                recomendaciones_cargo.append("📚 Programar entrenamientos especializados")
+                
+            else:
+                recomendaciones_cargo.append(f"📊 Actividad moderada en feriados ({porcentaje_feriados:.1f}%): Mantener staff regular")
+                recomendaciones_cargo.append("🎯 Monitorear tendencias estacionales")
+            
+            # Recomendaciones basadas en volumen total
+            if total_llamadas > resumen['total_llamadas'].median():
+                recomendaciones_cargo.append("🔥 Cargo de alto volumen: Priorizar en análisis")
+                recomendaciones_cargo.append("📊 Implementar métricas específicas de performance")
+            
+            # Recomendaciones específicas por tipo de cargo
+            cargo_lower = cargo.lower()
+            if 'supervisor' in cargo_lower or 'jefe' in cargo_lower:
+                recomendaciones_cargo.append("👔 Rol de liderazgo: Coordinar equipos en feriados")
+                recomendaciones_cargo.append("📋 Planificar horarios especiales")
+                
+            elif 'agente' in cargo_lower or 'call center' in cargo_lower:
+                recomendaciones_cargo.append("📞 Personal operativo: Evaluar rotación en feriados")
+                recomendaciones_cargo.append("⏰ Considerar turnos flexibles")
+                
+            elif 'secretaria' in cargo_lower:
+                recomendaciones_cargo.append("📝 Soporte administrativo: Backup en feriados críticos")
+                
+            recomendaciones[cargo] = recomendaciones_cargo
+        
+        return recomendaciones
 
 def mostrar_analisis_feriados_chilenos():
     """Interfaz de Streamlit para análisis de feriados chilenos"""
@@ -579,6 +777,134 @@ def mostrar_analisis_feriados_chilenos():
         - Identificación de patrones estacionales
         - Planificación de recursos
         """)
+
+def mostrar_analisis_cargo_feriados():
+    """Función para mostrar análisis de cargo con feriados en Streamlit"""
+    import streamlit as st
+    
+    st.title("👥 Análisis por Cargo y Feriados")
+    st.markdown("---")
+    
+    # Verificar si hay datos cargados
+    if hasattr(st.session_state, 'datos_cargados') and st.session_state.datos_cargados:
+        try:
+            # Intentar cargar datos de usuarios
+            df_usuarios = None
+            usuario_file = st.file_uploader(
+                "📊 Cargar archivo de mapeo de usuarios (opcional)", 
+                type=['csv', 'xlsx', 'xls'],
+                help="Archivo con información de usuarios y sus cargos"
+            )
+            
+            if usuario_file is not None:
+                try:
+                    if usuario_file.name.endswith('.csv'):
+                        df_usuarios = pd.read_csv(usuario_file)
+                    else:
+                        df_usuarios = pd.read_excel(usuario_file)
+                    
+                    st.success(f"✅ Archivo de usuarios cargado: {len(df_usuarios)} registros")
+                except Exception as e:
+                    st.error(f"❌ Error cargando archivo de usuarios: {e}")
+            
+            # Análisis con datos de llamadas existentes
+            df_llamadas = getattr(st.session_state, 'archivo_datos', None)
+            if df_llamadas is not None:
+                # Simular datos de cargo si no hay archivo de usuarios
+                if df_usuarios is None:
+                    st.info("💡 No se cargó archivo de usuarios. Mostrando análisis ejemplo con cargos simulados.")
+                    
+                    # Crear datos de ejemplo para demostración
+                    cargos_ejemplo = ['Secretaria', 'Recepcionista', 'Coordinadora', 'Supervisora', 'Asistente']
+                    
+                    if isinstance(df_llamadas, str):
+                        try:
+                            df = pd.read_csv(df_llamadas, sep=';', encoding='utf-8')
+                        except:
+                            df = pd.read_csv(df_llamadas)
+                    else:
+                        df = df_llamadas.copy()
+                    
+                    # Simular asignación de cargos para demo
+                    if 'TELEFONO' in df.columns:
+                        telefonos_unicos = df['TELEFONO'].unique()
+                        cargo_mapping = {tel: np.random.choice(cargos_ejemplo) for tel in telefonos_unicos}
+                        df['CARGO'] = df['TELEFONO'].map(cargo_mapping)
+                    else:
+                        df['CARGO'] = np.random.choice(cargos_ejemplo, len(df))
+                else:
+                    # Integrar datos reales de usuarios
+                    st.info("🔗 Integrando datos de usuarios con llamadas...")
+                    # Aquí iría la lógica de joining real
+                    df = df_llamadas.copy()
+                    df['CARGO'] = 'No asignado'  # Placeholder
+                
+                # Aplicar análisis de feriados
+                gestor_feriados = GestorFeriadosChilenos()
+                
+                if 'FECHA' in df.columns:
+                    df['fecha_solo'] = pd.to_datetime(df['FECHA']).dt.date
+                    df = gestor_feriados.marcar_feriados_en_dataframe(df, 'fecha_solo')
+                    
+                    # Análisis por cargo
+                    analisis_cargo = gestor_feriados.analizar_patrones_por_cargo(df, 'CARGO')
+                    
+                    # Mostrar resultados
+                    st.subheader("📊 Análisis por Cargo y Feriados")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("👥 Cargos únicos", analisis_cargo['resumen']['cargos_unicos'])
+                    with col2:
+                        st.metric("📞 Total llamadas", analisis_cargo['resumen']['total_llamadas'])
+                    with col3:
+                        cargo_mas_activo = max(analisis_cargo['por_cargo'].items(), key=lambda x: x[1]['total_llamadas'])[0]
+                        st.metric("🏆 Cargo más activo", cargo_mas_activo)
+                    
+                    # Gráfico de distribución por cargo
+                    st.subheader("📈 Distribución de Llamadas por Cargo")
+                    df_cargo_resumen = pd.DataFrame([
+                        {
+                            'Cargo': cargo,
+                            'Total Llamadas': datos['total_llamadas'],
+                            'En Feriados': datos['llamadas_feriados'],
+                            'Días Normales': datos['llamadas_normales'],
+                            'Variación Feriados (%)': datos['variacion_feriados_pct']
+                        }
+                        for cargo, datos in analisis_cargo['por_cargo'].items()
+                    ])
+                    
+                    # Gráfico de barras
+                    fig_cargo = px.bar(
+                        df_cargo_resumen,
+                        x='Cargo',
+                        y=['En Feriados', 'Días Normales'],
+                        title="Distribución de Llamadas: Feriados vs Días Normales por Cargo",
+                        barmode='group',
+                        color_discrete_map={'En Feriados': '#ff6b6b', 'Días Normales': '#4ecdc4'}
+                    )
+                    st.plotly_chart(fig_cargo, use_container_width=True)
+                    
+                    # Tabla detallada
+                    st.subheader("📋 Detalle por Cargo")
+                    st.dataframe(df_cargo_resumen, use_container_width=True)
+                    
+                    # Recomendaciones por cargo
+                    st.subheader("💡 Recomendaciones por Cargo")
+                    recomendaciones = gestor_feriados.generar_recomendaciones_por_cargo(analisis_cargo)
+                    
+                    for recom in recomendaciones:
+                        with st.expander(f"📋 {recom['cargo']} ({recom['tipo']})"):
+                            st.write(f"**{recom['titulo']}**")
+                            st.write(recom['mensaje'])
+                            if 'accion' in recom:
+                                st.info(f"🎯 **Acción recomendada:** {recom['accion']}")
+                
+        except Exception as e:
+            st.error(f"❌ Error en análisis por cargo: {e}")
+            logger.error(f"Error en análisis por cargo: {e}")
+    else:
+        st.info("💡 Primero carga datos de llamadas en la sección 'Preparación de Datos'")
 
 # Función para integrar en el flujo principal
 def integrar_feriados_en_analisis(df: pd.DataFrame, columna_fecha: str = 'fecha') -> pd.DataFrame:
