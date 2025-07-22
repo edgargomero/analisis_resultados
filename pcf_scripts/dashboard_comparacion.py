@@ -1075,7 +1075,7 @@ class DashboardValidacionCEAPSI:
                     x=1
                 ),
                 xaxis=dict(title=""),
-                yaxis=dict(title="Llamadas", titlefont=dict(size=14))
+                yaxis=dict(title=dict(text="Llamadas", font=dict(size=14)))
             )
             
             st.plotly_chart(fig, use_container_width=True)
