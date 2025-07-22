@@ -562,8 +562,8 @@ class PipelineProcessor:
             with col3:
                 paso_actual_placeholder = st.empty()
             
-            # Estado detallado de cada paso
-            st.markdown("### 📋 Estado Detallado")
+            # Estado compacto de cada paso
+            st.markdown("#### 📋 Estado")
             pasos_status = []
             for paso in pasos:
                 pasos_status.append(st.empty())
@@ -582,17 +582,14 @@ class PipelineProcessor:
                 f"{paso['nombre']}"
             )
             
-            # Actualizar estado de todos los pasos
+            # Actualizar estado compacto de todos los pasos
             for j, status_placeholder in enumerate(pasos_status):
                 if j < i:
-                    # Pasos completados
-                    status_placeholder.success(f"✅ {pasos[j]['icono']} {pasos[j]['nombre']} - Completado")
+                    status_placeholder.success(f"✅ {pasos[j]['nombre']}")
                 elif j == i:
-                    # Paso actual
-                    status_placeholder.info(f"⏳ {paso['icono']} {paso['nombre']} - {paso['descripcion']}")
+                    status_placeholder.info(f"⏳ {paso['nombre']} - {paso['descripcion']}")
                 else:
-                    # Pasos pendientes
-                    status_placeholder.warning(f"⏸️ {pasos[j]['icono']} {pasos[j]['nombre']} - Pendiente")
+                    status_placeholder.write(f"⏸️ {pasos[j]['nombre']}")
             
             # Ejecutar paso con medición de tiempo
             tiempo_paso_inicio = time.time()
@@ -624,15 +621,15 @@ class PipelineProcessor:
                     )
                     
                     # Marcar paso como completado
-                    pasos_status[i].success(f"✅ {paso['icono']} {paso['nombre']} - Completado ({tiempo_paso_real:.1f}s)")
+                    pasos_status[i].success(f"✅ {paso['nombre']} ({tiempo_paso_real:.1f}s)")
                     
                 else:
-                    pasos_status[i].error(f"❌ {paso['icono']} {paso['nombre']} - Error en ejecución")
+                    pasos_status[i].error(f"❌ {paso['nombre']} - Error")
                     st.error(f"❌ Error en {paso['nombre']}")
                     return False
                     
             except Exception as e:
-                pasos_status[i].error(f"❌ {paso['icono']} {paso['nombre']} - Error: {str(e)}")
+                pasos_status[i].error(f"❌ {paso['nombre']} - Error: {str(e)[:50]}...")
                 st.error(f"❌ Error en {paso['nombre']}: {str(e)}")
                 return False
         
@@ -1071,65 +1068,19 @@ def mostrar_progreso_pipeline():
     else:
         st.progress(progreso, text="⏳ Esperando datos para comenzar")
     
-    # Indicadores visuales de cada paso
-    st.markdown("#### 🔄 Estado Detallado de Pasos")
-    
-    for i, paso in enumerate(pasos):
-        col1, col2 = st.columns([1, 4])
-        
-        with col1:
-            # Icono del paso con estado
-            if paso["completado"]:
-                st.markdown(f"""
-                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #d4edda, #c3e6cb); 
-                           border-radius: 15px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 32px;">{paso['icono']}</div>
-                    <div style="font-size: 10px; color: #155724; font-weight: bold;">✅ HECHO</div>
-                </div>
-                """, unsafe_allow_html=True)
-            elif i == 0 or pasos[i-1]["completado"]:
-                # Próximo paso a ejecutar
-                st.markdown(f"""
-                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #fff3cd, #ffeaa7); 
-                           border-radius: 15px; border: 2px solid #ffc107; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                           animation: pulse 2s infinite;">
-                    <div style="font-size: 32px;">{paso['icono']}</div>
-                    <div style="font-size: 10px; color: #856404; font-weight: bold;">⏳ SIGUIENTE</div>
-                </div>
-                <style>
-                @keyframes pulse {{
-                    0% {{ transform: scale(1); }}
-                    50% {{ transform: scale(1.05); }}
-                    100% {{ transform: scale(1); }}
-                }}
-                </style>
-                """, unsafe_allow_html=True)
-            else:
-                # Pasos futuros
-                st.markdown(f"""
-                <div style="text-align: center; padding: 15px; background: #f8f9fa; 
-                           border-radius: 15px; border: 2px solid #dee2e6;">
-                    <div style="font-size: 32px; opacity: 0.3;">{paso['icono']}</div>
-                    <div style="font-size: 10px; color: #6c757d;">⏸️ ESPERA</div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        with col2:
-            # Información del paso
-            if paso["completado"]:
-                st.success(f"**{paso['nombre']}** - {paso['descripcion']}")
-            elif i == 0 or pasos[i-1]["completado"]:
-                st.info(f"**{paso['nombre']}** - {paso['descripcion']} ({paso['tiempo_estimado']})")
-            else:
-                st.write(f"**{paso['nombre']}** - {paso['descripcion']} ({paso['tiempo_estimado']})")
-        
-        # Línea conectora entre pasos (excepto el último)
-        if i < len(pasos) - 1:
-            st.markdown("""
-            <div style="text-align: center; padding: 5px;">
-                <div style="width: 2px; height: 20px; background: #dee2e6; margin: 0 auto;"></div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Estado compacto de pasos (optimizado para pantallas profesionales)
+    with st.expander("📋 Estado de Pasos", expanded=False):
+        for i, paso in enumerate(pasos):
+            status_icon = "✅" if paso["completado"] else ("⏳" if (i == 0 or pasos[i-1]["completado"]) else "⏸️")
+            status_text = "Completado" if paso["completado"] else ("Siguiente" if (i == 0 or pasos[i-1]["completado"]) else "Pendiente")
+            
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col1:
+                st.write(f"{status_icon} {paso['icono']}")
+            with col2:
+                st.write(f"**{paso['nombre']}** - {paso['descripcion']}")
+            with col3:
+                st.caption(paso['tiempo_estimado'])
     
     # Información adicional
     if progreso == 1.0:
