@@ -2,6 +2,9 @@
 """
 Módulo de Feriados Chilenos para CEAPSI
 Gestiona y analiza patrones de llamadas considerando feriados nacionales chilenos
+
+Los feriados están integrados directamente en el código para evitar dependencias externas.
+Incluye todos los feriados chilenos oficiales del período 2023-2025.
 """
 
 import pandas as pd
@@ -27,51 +30,66 @@ class GestorFeriadosChilenos:
         self.cargar_feriados()
     
     def cargar_feriados(self):
-        """Carga los feriados chilenos desde el archivo CSV"""
+        """Carga los feriados chilenos integrados en el código"""
         try:
-            # Intentar cargar desde el directorio de descargas del usuario
-            rutas_posibles = [
-                Path(r"C:\Users\edgar\Downloads\feriadoschile.csv"),
-                self.base_path / "feriadoschile.csv",
-                self.base_path / "data" / "feriadoschile.csv"
-            ]
-            
-            archivo_encontrado = None
-            for ruta in rutas_posibles:
-                if ruta.exists():
-                    archivo_encontrado = ruta
-                    break
-            
-            if archivo_encontrado:
-                self.feriados_df = pd.read_csv(archivo_encontrado)
-                logger.info(f"Feriados cargados desde: {archivo_encontrado}")
-            else:
-                # Crear datos de feriados por defecto si no se encuentra el archivo
-                self.crear_feriados_default()
-                logger.warning("Archivo de feriados no encontrado, usando datos por defecto")
+            # Usar datos integrados por defecto
+            self.crear_feriados_default()
+            logger.info("Feriados chilenos cargados desde datos integrados en el código")
             
             # Procesar y normalizar datos
             self.procesar_feriados()
             
         except Exception as e:
             logger.error(f"Error cargando feriados: {e}")
-            self.crear_feriados_default()
-            self.procesar_feriados()
+            # Si hay algún error, intentar crear datos mínimos
+            try:
+                self.feriados_df = pd.DataFrame([
+                    {"Fecha (dd-mm-yyyy)": "01-01-2024", "Descripcion feriado": "Año Nuevo"},
+                    {"Fecha (dd-mm-yyyy)": "18-09-2024", "Descripcion feriado": "Independencia Nacional"},
+                    {"Fecha (dd-mm-yyyy)": "25-12-2024", "Descripcion feriado": "Navidad"}
+                ])
+                self.procesar_feriados()
+            except:
+                logger.error("Error crítico cargando feriados, sistema continuará sin feriados")
     
     def crear_feriados_default(self):
-        """Crea un conjunto básico de feriados chilenos si no se encuentra el archivo"""
+        """Crea un conjunto completo de feriados chilenos 2023-2025 integrado en el código"""
         feriados_default = [
+            # 2023
+            {"Fecha (dd-mm-yyyy)": "01-01-2023", "Descripcion feriado": "Año Nuevo"},
+            {"Fecha (dd-mm-yyyy)": "02-01-2023", "Descripcion feriado": "Feriado Adicional por Año Nuevo"},
+            {"Fecha (dd-mm-yyyy)": "07-04-2023", "Descripcion feriado": "Viernes Santo"},
+            {"Fecha (dd-mm-yyyy)": "08-04-2023", "Descripcion feriado": "Sábado Santo"},
+            {"Fecha (dd-mm-yyyy)": "01-05-2023", "Descripcion feriado": "Día Nacional del Trabajo"},
+            {"Fecha (dd-mm-yyyy)": "21-05-2023", "Descripcion feriado": "Día de las Glorias Navales"},
+            {"Fecha (dd-mm-yyyy)": "21-06-2023", "Descripcion feriado": "Día Nacional de los Pueblos Indígenas"},
+            {"Fecha (dd-mm-yyyy)": "26-06-2023", "Descripcion feriado": "San Pedro y San Pablo"},
+            {"Fecha (dd-mm-yyyy)": "16-07-2023", "Descripcion feriado": "Día de la Virgen del Carmen"},
+            {"Fecha (dd-mm-yyyy)": "15-08-2023", "Descripcion feriado": "Asunción de la Virgen"},
+            {"Fecha (dd-mm-yyyy)": "18-09-2023", "Descripcion feriado": "Independencia Nacional"},
+            {"Fecha (dd-mm-yyyy)": "19-09-2023", "Descripcion feriado": "Día de las Glorias del Ejército"},
+            {"Fecha (dd-mm-yyyy)": "09-10-2023", "Descripcion feriado": "Encuentro de Dos Mundos"},
+            {"Fecha (dd-mm-yyyy)": "27-10-2023", "Descripcion feriado": "Día de las Iglesias Evangélicas y Protestantes"},
+            {"Fecha (dd-mm-yyyy)": "01-11-2023", "Descripcion feriado": "Día de Todos los Santos"},
+            {"Fecha (dd-mm-yyyy)": "08-12-2023", "Descripcion feriado": "Inmaculada Concepción"},
+            {"Fecha (dd-mm-yyyy)": "17-12-2023", "Descripcion feriado": "Plebiscito Constitucional"},
+            {"Fecha (dd-mm-yyyy)": "25-12-2023", "Descripcion feriado": "Navidad"},
+            # 2024
             {"Fecha (dd-mm-yyyy)": "01-01-2024", "Descripcion feriado": "Año Nuevo"},
             {"Fecha (dd-mm-yyyy)": "29-03-2024", "Descripcion feriado": "Viernes Santo"},
             {"Fecha (dd-mm-yyyy)": "30-03-2024", "Descripcion feriado": "Sábado Santo"},
             {"Fecha (dd-mm-yyyy)": "01-05-2024", "Descripcion feriado": "Día Nacional del Trabajo"},
             {"Fecha (dd-mm-yyyy)": "21-05-2024", "Descripcion feriado": "Día de las Glorias Navales"},
+            {"Fecha (dd-mm-yyyy)": "09-06-2024", "Descripcion feriado": "Elecciones Primarias de Alcaldes y Gobernadores"},
             {"Fecha (dd-mm-yyyy)": "20-06-2024", "Descripcion feriado": "Día Nacional de los Pueblos Indígenas"},
+            {"Fecha (dd-mm-yyyy)": "29-06-2024", "Descripcion feriado": "San Pedro y San Pablo"},
             {"Fecha (dd-mm-yyyy)": "16-07-2024", "Descripcion feriado": "Día de la Virgen del Carmen"},
             {"Fecha (dd-mm-yyyy)": "15-08-2024", "Descripcion feriado": "Asunción de la Virgen"},
             {"Fecha (dd-mm-yyyy)": "18-09-2024", "Descripcion feriado": "Independencia Nacional"},
             {"Fecha (dd-mm-yyyy)": "19-09-2024", "Descripcion feriado": "Día de las Glorias del Ejército"},
+            {"Fecha (dd-mm-yyyy)": "20-09-2024", "Descripcion feriado": "Feriado Adicional por Fiestas Patrias"},
             {"Fecha (dd-mm-yyyy)": "12-10-2024", "Descripcion feriado": "Encuentro de Dos Mundos"},
+            {"Fecha (dd-mm-yyyy)": "27-10-2024", "Descripcion feriado": "Elecciones Municipales, de Consejeros Regionales y Gobernadores Regionales"},
             {"Fecha (dd-mm-yyyy)": "31-10-2024", "Descripcion feriado": "Día de las Iglesias Evangélicas y Protestantes"},
             {"Fecha (dd-mm-yyyy)": "01-11-2024", "Descripcion feriado": "Día de Todos los Santos"},
             {"Fecha (dd-mm-yyyy)": "08-12-2024", "Descripcion feriado": "Inmaculada Concepción"},
@@ -83,6 +101,7 @@ class GestorFeriadosChilenos:
             {"Fecha (dd-mm-yyyy)": "01-05-2025", "Descripcion feriado": "Día Nacional del Trabajo"},
             {"Fecha (dd-mm-yyyy)": "21-05-2025", "Descripcion feriado": "Día de las Glorias Navales"},
             {"Fecha (dd-mm-yyyy)": "20-06-2025", "Descripcion feriado": "Día Nacional de los Pueblos Indígenas"},
+            {"Fecha (dd-mm-yyyy)": "29-06-2025", "Descripcion feriado": "San Pedro y San Pablo"},
             {"Fecha (dd-mm-yyyy)": "16-07-2025", "Descripcion feriado": "Día de la Virgen del Carmen"},
             {"Fecha (dd-mm-yyyy)": "15-08-2025", "Descripcion feriado": "Asunción de la Virgen"},
             {"Fecha (dd-mm-yyyy)": "18-09-2025", "Descripcion feriado": "Independencia Nacional"},
