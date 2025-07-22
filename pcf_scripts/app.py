@@ -52,6 +52,13 @@ except ImportError as e:
     logger.warning(f"No se pudo importar preparacion_datos: {e}")
     PREP_DATOS_AVAILABLE = False
 
+try:
+    from optimizacion_hiperparametros import mostrar_optimizacion_hiperparametros
+    HYPEROPT_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar optimizacion_hiperparametros: {e}")
+    HYPEROPT_AVAILABLE = False
+
 # Configuración de la página principal
 st.set_page_config(
     page_title="CEAPSI - Sistema PCF",
@@ -778,7 +785,7 @@ def main():
         
         pagina = st.selectbox(
             "Seleccionar módulo:",
-            ["🏠 Inicio", "📊 Dashboard", "🔧 Preparación de Datos", "👥 Análisis de Usuarios", "ℹ️ Información"],
+            ["🏠 Inicio", "📊 Dashboard", "🔧 Preparación de Datos", "🎯 Optimización ML", "👥 Análisis de Usuarios", "ℹ️ Información"],
             index=0
         )
         
@@ -800,6 +807,12 @@ def main():
             mostrar_preparacion_datos()
         else:
             st.error("⚠️ Módulo de preparación de datos no disponible")
+    elif pagina == "🎯 Optimización ML":
+        if HYPEROPT_AVAILABLE:
+            mostrar_optimizacion_hiperparametros()
+        else:
+            st.error("⚠️ Módulo de optimización de hiperparámetros no disponible")
+            st.info("Instala las dependencias: pip install scikit-optimize optuna")
     elif pagina == "👥 Análisis de Usuarios":
         mostrar_analisis_usuarios()
     elif pagina == "ℹ️ Información":
@@ -815,11 +828,23 @@ def main():
         5. **🔮 Predicciones** - Generación de pronósticos
         6. **📊 Dashboard** - Visualización interactiva
         
-        ### 📋 Columnas Requeridas:
+        ### 🎯 Nuevas Funcionalidades:
+        - **🔧 Preparación de Datos** - Carga CSV/Excel/JSON y API Reservo
+        - **🎯 Optimización ML** - Tuning avanzado de hiperparámetros
+        - **👥 Análisis de Usuarios** - Mapeo Alodesk-Reservo
+        
+        ### 📋 Columnas Requeridas (Llamadas):
         - `FECHA`: Fecha y hora (DD-MM-YYYY HH:MM:SS)
         - `TELEFONO`: Número de teléfono
         - `SENTIDO`: 'in' (entrante) o 'out' (saliente)
         - `ATENDIDA`: 'Si' o 'No'
+        
+        ### 👥 Columnas Usuarios (Mapeo):
+        - `username_reservo`: Usuario en Reservo
+        - `cargo`: Cargo/rol del usuario
+        - `uuid_reservo`: ID único en Reservo
+        - `username_alodesk`: Usuario en Alodesk (opcional)
+        - `anexo`: Extensión telefónica (opcional)
         """)
 
 def mostrar_analisis_usuarios():
