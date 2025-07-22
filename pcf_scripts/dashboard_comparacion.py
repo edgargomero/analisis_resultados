@@ -1449,8 +1449,8 @@ class DashboardValidacionCEAPSI:
             df_historico = self.cargar_datos_historicos(tipo_llamada)
             
             if df_historico is not None and len(df_historico) > 0:
-                # Marcar feriados en los datos
-                df_con_feriados = gestor_feriados.marcar_feriados_en_dataframe(df_historico, 'fecha')
+                # Marcar feriados en los datos (Prophet usa 'ds' como columna de fecha)
+                df_con_feriados = gestor_feriados.marcar_feriados_en_dataframe(df_historico, 'ds')
                 
                 # Aplicar filtrado según tipo de llamada para demostrar la lógica
                 if tipo_llamada.upper() in ['SALIENTE', 'OUTBOUND', 'OUT']:

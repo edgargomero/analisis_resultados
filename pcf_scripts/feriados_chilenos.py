@@ -424,7 +424,28 @@ class GestorFeriadosChilenos:
     def obtener_metricas_feriados(self, df: pd.DataFrame) -> Dict:
         """Obtiene métricas específicas relacionadas con feriados"""
         if 'es_feriado' not in df.columns:
-            df = self.marcar_feriados_en_dataframe(df)
+            # Intentar detectar la columna de fecha automáticamente
+            columna_fecha = None
+            for col in ['ds', 'fecha', 'FECHA', 'fecha_solo', 'date']:
+                if col in df.columns:
+                    columna_fecha = col
+                    break
+            
+            if columna_fecha:
+                df = self.marcar_feriados_en_dataframe(df, columna_fecha)
+            else:
+                logger.warning("No se pudo detectar columna de fecha para marcar feriados")
+                return {
+                    'total_llamadas': len(df),
+                    'llamadas_feriados': 0,
+                    'porcentaje_feriados': 0,
+                    'promedio_dia_normal': 0,
+                    'promedio_feriado': 0,
+                    'promedio_pre_feriado': 0,
+                    'variacion_feriado_pct': 0,
+                    'variacion_pre_feriado_pct': 0,
+                    'feriados_mas_activos': []
+                }
         
         total_llamadas = len(df)
         llamadas_feriados = len(df[df['es_feriado']])
