@@ -862,7 +862,7 @@ def mostrar_card_metrica_mejorada(titulo, valor, descripcion, icono, color="#4CA
     if delta is not None:
         delta_color = "green" if delta >= 0 else "red"
         delta_symbol = "↑" if delta >= 0 else "↓"
-        delta_html = f'<p style="color: {delta_color}; margin: 5px 0; font-size: 14px;">{delta_symbol} {abs(delta):.1f}%</p>'
+        delta_html = f'<div style="color: {delta_color}; margin: 5px 0; font-size: 14px;">{delta_symbol} {abs(delta):.1f}%</div>'
     
     card_html = f"""
     <div style="
@@ -877,11 +877,11 @@ def mostrar_card_metrica_mejorada(titulo, valor, descripcion, icono, color="#4CA
     ">
         <div style="display: flex; align-items: center; margin-bottom: 15px;">
             <span style="font-size: 28px; margin-right: 12px;">{icono}</span>
-            <h4 style="margin: 0; color: #333; font-weight: 600;">{titulo}</h4>
+            <div style="margin: 0; color: #333; font-weight: 600; font-size: 18px;">{titulo}</div>
         </div>
-        <h2 style="margin: 10px 0; color: {color}; font-weight: bold; font-size: 32px;">{valor}</h2>
+        <div style="margin: 10px 0; color: {color}; font-weight: bold; font-size: 32px;">{valor}</div>
         {delta_html}
-        <p style="margin: 0; color: #666; font-size: 13px;">{descripcion}</p>
+        <div style="margin: 0; color: #666; font-size: 13px;">{descripcion}</div>
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
@@ -951,7 +951,7 @@ def mostrar_navegacion_contextual():
         st.markdown("""
         <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; border-left: 5px solid #2196F3;">
             <h4 style="color: #1976D2; margin: 0 0 10px 0;">👆 Próximo paso: Cargar datos</h4>
-            <p style="margin: 0; color: #424242;">Sube un archivo CSV o Excel con tus datos de llamadas usando el panel lateral</p>
+            <div style="margin: 0; color: #424242;">Sube un archivo CSV o Excel con tus datos de llamadas usando el panel lateral</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -975,7 +975,7 @@ def mostrar_navegacion_contextual():
         st.markdown("""
         <div style="background: #fff3e0; padding: 20px; border-radius: 10px; border-left: 5px solid #FF9800;">
             <h4 style="color: #F57C00; margin: 0 0 10px 0;">⚙️ Próximo paso: Ejecutar pipeline</h4>
-            <p style="margin: 0; color: #424242;">Los datos están cargados. Ahora ejecuta el pipeline para procesarlos y entrenar los modelos.</p>
+            <div style="margin: 0; color: #424242;">Los datos están cargados. Ahora ejecuta el pipeline para procesarlos y entrenar los modelos.</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -994,7 +994,7 @@ def mostrar_navegacion_contextual():
         st.markdown("""
         <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50;">
             <h4 style="color: #2E7D32; margin: 0 0 10px 0;">🎉 ¡Sistema listo!</h4>
-            <p style="margin: 0; color: #424242;">Todos los modelos están entrenados. Explora tus resultados y predicciones.</p>
+            <div style="margin: 0; color: #424242;">Todos los modelos están entrenados. Explora tus resultados y predicciones.</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1031,7 +1031,7 @@ def mostrar_pagina_inicio():
     ">
         <h1 style="margin: 0; font-size: 48px; font-weight: 700;">📞 CEAPSI</h1>
         <h3 style="margin: 10px 0 0 0; opacity: 0.9; font-weight: 400;">Sistema de Predicción Inteligente de Llamadas</h3>
-        <p style="margin: 15px 0 0 0; opacity: 0.8;">Powered by AI • Real-time Analytics • Smart Predictions</p>
+        <div style="margin: 15px 0 0 0; opacity: 0.8;">Powered by AI • Real-time Analytics • Smart Predictions</div>
     </div>
     """, unsafe_allow_html=True)
     
