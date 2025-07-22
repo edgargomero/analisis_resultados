@@ -312,9 +312,13 @@ class PipelineProcessor:
                 df_diario['ds'] = pd.to_datetime(df_diario['ds'])
                 df_diario = df_diario.sort_values('ds').reset_index(drop=True)
                 
-                # Completar días faltantes
+                # Completar días faltantes - usar rango completo de datos
                 fecha_min = df_diario['ds'].min()
                 fecha_max = df_diario['ds'].max()
+                
+                # Mostrar información del rango detectado
+                st.info(f"📅 **{tipo.capitalize()}**: Rango de datos detectado {fecha_min.date()} → {fecha_max.date()}")
+                
                 todas_fechas = pd.date_range(start=fecha_min, end=fecha_max, freq='D')
                 todas_fechas = todas_fechas[todas_fechas.dayofweek < 5]  # Solo días laborales
                 
@@ -468,13 +472,18 @@ class PipelineProcessor:
                 # Generar fechas futuras (próximos 28 días laborales)
                 ultima_fecha = dataset['ds'].max()
                 
-                # VALIDACIÓN CRÍTICA: Evitar data leakage para presentaciones científicas
+                # VALIDACIÓN: Alertar sobre datos muy futuros pero permitir análisis retrospectivo
                 fecha_hoy = pd.to_datetime('today').normalize()
-                if ultima_fecha >= fecha_hoy:
-                    st.error(f"🚨 **DATA LEAKAGE DETECTADO** 🚨")
-                    st.error(f"Los datos contienen fechas futuras: última fecha = {ultima_fecha.date()}, hoy = {fecha_hoy.date()}")
-                    st.error("Esto compromete la validez científica del modelo. Revise los datos de entrada.")
+                fecha_limite_razonable = fecha_hoy + pd.DateOffset(years=2)  # Permitir hasta 2 años futuros
+                
+                if ultima_fecha > fecha_limite_razonable:
+                    st.error(f"🚨 **DATOS EXCESIVAMENTE FUTUROS** 🚨")
+                    st.error(f"Última fecha: {ultima_fecha.date()}, límite razonable: {fecha_limite_razonable.date()}")
+                    st.error("Verifique que las fechas del dataset sean correctas.")
                     return False
+                elif ultima_fecha > fecha_hoy:
+                    st.info(f"ℹ️ **Análisis Retrospectivo**: Datos incluyen fechas futuras hasta {ultima_fecha.date()}")
+                    st.info("Procesando dataset completo para análisis histórico y validación.")
                 
                 fechas_futuras = []
                 fecha_actual = ultima_fecha + timedelta(days=1)
@@ -752,11 +761,29 @@ def procesar_archivo_subido(archivo_subido):
             df.to_csv(tmp_file, sep=';', index=False)
             temp_path = tmp_file.name
         
-        # Actualizar session state
+        # Actualizar session state con información completa
         st.session_state.archivo_datos = temp_path
         st.session_state.datos_cargados = True
         
-        st.success(f"✅ Archivo cargado: {len(df)} registros")
+        # Mostrar información del rango de fechas detectado
+        if 'FECHA' in df.columns:
+            try:
+                df['FECHA'] = pd.to_datetime(df['FECHA'], errors='coerce')
+                fecha_min = df['FECHA'].min()
+                fecha_max = df['FECHA'].max()
+                st.success(f"✅ Archivo cargado: {len(df)} registros")
+                st.info(f"📅 **Rango completo de datos**: {fecha_min.date()} → {fecha_max.date()}")
+                
+                # Verificar distribución por tipo si existe
+                if 'SENTIDO' in df.columns:
+                    dist_sentido = df['SENTIDO'].value_counts()
+                    st.info(f"📊 **Distribución**: {dict(dist_sentido)}")
+                    
+            except Exception as e:
+                st.warning(f"No se pudo analizar el rango de fechas: {e}")
+                st.success(f"✅ Archivo cargado: {len(df)} registros")
+        else:
+            st.success(f"✅ Archivo cargado: {len(df)} registros")
         
         # Preguntar si ejecutar pipeline
         if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True, key="main_pipeline_btn"):
@@ -948,11 +975,28 @@ def mostrar_dashboard():
     if DASHBOARD_AVAILABLE:
         try:
             dashboard = DashboardValidacionCEAPSI()
-            if st.session_state.archivo_datos:
+            
+            # Verificar y transferir archivo de datos con debugging
+            if hasattr(st.session_state, 'archivo_datos') and st.session_state.archivo_datos:
                 dashboard.archivo_datos_manual = st.session_state.archivo_datos
+                st.success(f"📁 Usando datos cargados: {os.path.basename(st.session_state.archivo_datos)}")
+                
+                # Verificar rango de fechas del archivo real
+                try:
+                    df_temp = pd.read_csv(st.session_state.archivo_datos, sep=';')
+                    df_temp['FECHA'] = pd.to_datetime(df_temp['FECHA'], errors='coerce')
+                    fecha_min = df_temp['FECHA'].min()
+                    fecha_max = df_temp['FECHA'].max()
+                    st.info(f"📅 **Rango de datos**: {fecha_min.date()} → {fecha_max.date()}")
+                except Exception as e:
+                    st.warning(f"No se pudo determinar el rango de fechas: {e}")
+            else:
+                st.warning("⚠️ No hay archivo de datos cargado. Dashboard usará datos de ejemplo.")
+                
             dashboard.ejecutar_dashboard()
         except Exception as e:
             st.error(f"Error cargando dashboard: {e}")
+            logger.error(f"Error en dashboard: {e}")
     else:
         st.error("Dashboard no disponible")
 

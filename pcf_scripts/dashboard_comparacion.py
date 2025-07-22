@@ -86,18 +86,27 @@ class DashboardValidacionCEAPSI:
             # Usar ruta simple, sin base_path que puede estar mal configurado
             archivo_historico = f"datos_prophet_{tipo_llamada.lower()}.csv"
             
-            # Verificar si existe el archivo
+            # Verificar si existe el archivo o si hay datos manuales
             if not os.path.exists(archivo_historico):
-                st.info(f"📁 Creando datos de ejemplo para {tipo_llamada}...")
-                return _self._crear_datos_ejemplo_historicos(tipo_llamada)
+                if _self.archivo_datos_manual:
+                    st.info(f"📁 Generando datos históricos desde archivo subido para {tipo_llamada}...")
+                    return _self._generar_datos_desde_archivo_real(tipo_llamada)
+                else:
+                    st.info(f"📁 Creando datos de ejemplo para {tipo_llamada}...")
+                    return _self._crear_datos_ejemplo_historicos(tipo_llamada)
             
             df_hist = pd.read_csv(archivo_historico)
             df_hist['ds'] = pd.to_datetime(df_hist['ds'])
             return df_hist
         except Exception as e:
             st.warning(f"No se pudieron cargar datos históricos: {e}")
-            # Crear datos de ejemplo como fallback
-            return _self._crear_datos_ejemplo_historicos(tipo_llamada)
+            # Intentar usar archivo real si está disponible
+            if _self.archivo_datos_manual:
+                st.info(f"🔄 Intentando generar desde archivo real para {tipo_llamada}...")
+                return _self._generar_datos_desde_archivo_real(tipo_llamada)
+            else:
+                # Crear datos de ejemplo solo como último recurso
+                return _self._crear_datos_ejemplo_historicos(tipo_llamada)
     
     @st.cache_data(ttl=300)
     def cargar_datos_llamadas_completos(_self):
@@ -107,8 +116,9 @@ class DashboardValidacionCEAPSI:
             if _self.archivo_datos_manual:
                 archivo_llamadas = _self.archivo_datos_manual
             else:
-                # Usar archivo de ejemplo si no hay datos manuales
-                st.info("📁 No hay archivo de datos cargado. Usando datos de ejemplo...")
+                # Solo usar datos de ejemplo si realmente no hay archivo manual
+                st.warning("📁 No hay archivo de datos cargado. Usando datos de ejemplo limitados...")
+                st.info("💡 Sube un archivo de datos para análisis completo con tu información real.")
                 return _self._crear_datos_ejemplo_completos()
             
             # Intentar diferentes encodings
@@ -1572,6 +1582,62 @@ class DashboardValidacionCEAPSI:
             
         except Exception as e:
             st.error(f"Error generando heatmap combinado: {e}")
+    
+    def _generar_datos_desde_archivo_real(self, tipo_llamada):
+        """Genera datos históricos desde el archivo real subido por el usuario"""
+        try:
+            if not self.archivo_datos_manual:
+                raise Exception("No hay archivo de datos manual disponible")
+            
+            # Cargar datos reales
+            for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                try:
+                    df_real = pd.read_csv(self.archivo_datos_manual, sep=';', encoding=encoding)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            else:
+                raise Exception("No se pudo cargar el archivo con ningún encoding")
+            
+            # Procesar fechas
+            df_real['FECHA'] = pd.to_datetime(df_real['FECHA'], errors='coerce')
+            df_real = df_real.dropna(subset=['FECHA'])
+            
+            # Filtrar por tipo de llamada
+            if 'SENTIDO' in df_real.columns:
+                sentido_filter = 'in' if tipo_llamada.lower() == 'entrante' else 'out'
+                df_filtrado = df_real[df_real['SENTIDO'] == sentido_filter].copy()
+            else:
+                # Si no hay columna SENTIDO, usar todos los datos
+                df_filtrado = df_real.copy()
+            
+            # Agrupar por día para obtener conteos
+            df_diario = df_filtrado.groupby(df_filtrado['FECHA'].dt.date).size().reset_index()
+            df_diario.columns = ['ds', 'y']
+            df_diario['ds'] = pd.to_datetime(df_diario['ds'])
+            
+            # Completar días faltantes con 0 llamadas
+            fecha_min = df_diario['ds'].min()
+            fecha_max = df_diario['ds'].max()
+            fecha_range = pd.date_range(start=fecha_min, end=fecha_max, freq='D')
+            
+            df_completo = pd.DataFrame({'ds': fecha_range})
+            df_completo = df_completo.merge(df_diario, on='ds', how='left')
+            df_completo['y'] = df_completo['y'].fillna(0)
+            
+            # Guardar archivo procesado para cache
+            archivo_cache = f"datos_prophet_{tipo_llamada.lower()}.csv"
+            df_completo.to_csv(archivo_cache, index=False)
+            
+            st.success(f"✅ Datos históricos generados desde archivo real para {tipo_llamada}")
+            st.info(f"📅 Rango procesado: {fecha_min.date()} → {fecha_max.date()}")
+            
+            return df_completo
+            
+        except Exception as e:
+            st.error(f"Error generando datos desde archivo real: {e}")
+            # Fallback a datos de ejemplo solo si falla completamente
+            return self._crear_datos_ejemplo_historicos(tipo_llamada)
     
     def _crear_datos_ejemplo_historicos(self, tipo_llamada):
         """Crea datos de ejemplo para cuando no hay archivos históricos"""
