@@ -784,6 +784,7 @@ class DashboardValidacionCEAPSI:
             if len(df_30d) > 0:
                 st.subheader("📊 Resumen por Día de la Semana (Últimos 30 días)")
                 
+                df_30d = df_30d.copy()
                 df_30d['dia_semana'] = df_30d['fecha'].dt.day_name()
                 resumen_semanal = df_30d.groupby('dia_semana').agg({
                     'porcentaje_atencion': ['mean', 'std'],

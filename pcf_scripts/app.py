@@ -518,33 +518,56 @@ def procesar_archivo_usuarios(archivo_usuarios):
                 if col_esperada in col_disponible.upper():
                     mapeo_columnas[col_disponible] = col_esperada
                     break
-                elif col_esperada == 'TELEFONO' and any(x in col_disponible.upper() for x in ['TEL', 'PHONE', 'NUMERO']):
+                elif col_esperada == 'TELEFONO' and any(x in col_disponible.upper() for x in ['TEL', 'PHONE', 'NUMERO', 'ANEXO']):
                     mapeo_columnas[col_disponible] = col_esperada
                     break
-                elif col_esperada == 'USUARIO' and any(x in col_disponible.upper() for x in ['USER', 'NAME', 'NOMBRE', 'AGENTE']):
+                elif col_esperada == 'USUARIO' and any(x in col_disponible.upper() for x in ['USER', 'NAME', 'NOMBRE', 'AGENTE', 'USERNAME_ALODESK', 'USERNAME_RESERVO']):
                     mapeo_columnas[col_disponible] = col_esperada
                     break  
-                elif col_esperada == 'CARGO' and any(x in col_disponible.upper() for x in ['ROL', 'ROLE', 'PUESTO', 'POSITION']):
+                elif col_esperada == 'CARGO' and any(x in col_disponible.upper() for x in ['ROL', 'ROLE', 'PUESTO', 'POSITION', 'PERMISO']):
                     mapeo_columnas[col_disponible] = col_esperada
                     break
         
         # Renombrar columnas
         df = df.rename(columns=mapeo_columnas)
         
-        # Verificar columnas críticas
+        # Verificar columnas críticas - para mapeo de usuarios, TELEFONO puede ser opcional
         if 'TELEFONO' not in df.columns:
-            st.error("❌ Columna TELEFONO no encontrada. Asegúrate de que existe una columna con teléfonos.")
-            return
+            # Intentar crear TELEFONO desde anexo o ID
+            if 'anexo' in df.columns:
+                df['TELEFONO'] = df['anexo'].astype(str)
+                st.info("ℹ️ Columna TELEFONO creada desde la columna 'anexo'.")
+            elif 'id_usuario_ALODESK' in df.columns:
+                df['TELEFONO'] = df['id_usuario_ALODESK'].astype(str)
+                st.info("ℹ️ Columna TELEFONO creada desde 'id_usuario_ALODESK'.")
+            else:
+                # Crear TELEFONO genérico para análisis de usuarios
+                df['TELEFONO'] = df.index.map(lambda x: f'EXT_{x+1000}')
+                st.warning("⚠️ Columna TELEFONO no encontrada. Usando extensiones genéricas para análisis.")
         
-        # Si no hay USUARIO, usar índice
+        # Si no hay USUARIO, intentar crear desde username_alodesk o username_reservo
         if 'USUARIO' not in df.columns:
-            df['USUARIO'] = df.index.map(lambda x: f'Usuario_{x+1}')
-            st.info("ℹ️ Columna USUARIO no encontrada. Usando numeración automática.")
+            if 'username_alodesk' in df.columns:
+                df['USUARIO'] = df['username_alodesk'].fillna(df.get('username_reservo', '')).fillna('Usuario_Desconocido')
+                st.info("ℹ️ Columna USUARIO creada desde 'username_alodesk' y 'username_reservo'.")
+            elif 'username_reservo' in df.columns:
+                df['USUARIO'] = df['username_reservo'].fillna('Usuario_Desconocido')
+                st.info("ℹ️ Columna USUARIO creada desde 'username_reservo'.")
+            else:
+                df['USUARIO'] = df.index.map(lambda x: f'Usuario_{x+1}')
+                st.info("ℹ️ Columna USUARIO no encontrada. Usando numeración automática.")
         
-        # Si no hay CARGO, usar valor por defecto
+        # Si no hay CARGO, intentar desde Permiso o usar valor por defecto
         if 'CARGO' not in df.columns:
-            df['CARGO'] = 'Agente'
-            st.info("ℹ️ Columna CARGO no encontrada. Usando 'Agente' por defecto.")
+            if 'Permiso' in df.columns:
+                df['CARGO'] = df['Permiso']
+                st.info("ℹ️ Columna CARGO creada desde 'Permiso'.")
+            elif 'cargo' in df.columns:
+                df['CARGO'] = df['cargo']
+                st.info("ℹ️ Columna CARGO creada desde 'cargo'.")
+            else:
+                df['CARGO'] = 'Agente'
+                st.info("ℹ️ Columna CARGO no encontrada. Usando 'Agente' por defecto.")
         
         # Limpiar y normalizar datos
         df['TELEFONO'] = df['TELEFONO'].astype(str).str.strip()
