@@ -935,37 +935,7 @@ def mostrar_seccion_carga_archivos():
     if archivo_subido is not None:
         procesar_archivo_subido(archivo_subido)
     
-    # Sección de datos de usuarios/cargos
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 👥 Datos de Usuarios")
-    
-    if 'usuarios_cargados' not in st.session_state:
-        st.session_state.usuarios_cargados = False
-        st.session_state.archivo_usuarios = None
-        st.session_state.df_usuarios = None
-    
-    if st.session_state.usuarios_cargados:
-        st.sidebar.success("✅ Usuarios cargados")
-        num_usuarios = len(st.session_state.df_usuarios) if st.session_state.df_usuarios is not None else 0
-        st.sidebar.info(f"👥 {num_usuarios} usuarios")
-        
-        if st.sidebar.button("🗑️ Limpiar Usuarios", use_container_width=True):
-            st.session_state.usuarios_cargados = False
-            st.session_state.archivo_usuarios = None
-            st.session_state.df_usuarios = None
-            st.rerun()
-    else:
-        st.sidebar.warning("⚠️ No hay datos de usuarios")
-    
-    archivo_usuarios = st.sidebar.file_uploader(
-        "Cargar datos de usuarios:",
-        type=['csv', 'xlsx', 'xls'],
-        help="Archivo con datos de usuarios, cargos y teléfonos",
-        key="uploader_usuarios"
-    )
-    
-    if archivo_usuarios is not None:
-        procesar_archivo_usuarios(archivo_usuarios)
+    # Información de usuarios movida a sección dedicada 👥 Análisis de Usuarios
 
 def mostrar_dashboard():
     """Mostrar dashboard con resultados del pipeline"""
@@ -1243,8 +1213,8 @@ def mostrar_navegacion_contextual():
                 st.rerun()
         
         with col3:
-            if st.button("👥 Análisis Usuarios", use_container_width=True, key="ir_usuarios_btn"):
-                st.session_state.navegacion_objetivo = "👥 Análisis de Usuarios"
+            if st.button("📊 Dashboard", use_container_width=True, key="ir_dashboard_btn"):
+                st.session_state.navegacion_objetivo = "📊 Dashboard"
                 st.rerun()
 
 def mostrar_pagina_inicio():
@@ -1415,10 +1385,10 @@ def mostrar_ayuda_contextual():
             st.info("""
             **👥 Análisis de Usuarios**
             
-            • Mapeo Alodesk-Reservo
+            • Gestión de usuarios y cargos
             • Performance por cargo
-            • Análisis cruzado
-            • Exportar reportes
+            • Análisis de productividad
+            • Reportes exportables
             """)
         
         # FAQ rápida
@@ -1569,12 +1539,9 @@ def main():
         - `SENTIDO`: 'in' (entrante) o 'out' (saliente)
         - `ATENDIDA`: 'Si' o 'No'
         
-        ### 👥 Columnas Usuarios (Mapeo):
-        - `username_reservo`: Usuario en Reservo
-        - `cargo`: Cargo/rol del usuario
-        - `uuid_reservo`: ID único en Reservo
-        - `username_alodesk`: Usuario en Alodesk (opcional)
-        - `anexo`: Extensión telefónica (opcional)
+        ### 📋 Información Adicional:
+        - Los datos de usuarios se gestionan en la sección **👥 Análisis de Usuarios**
+        - Formatos soportados: CSV (;), Excel (.xlsx, .xls)
         
         ### 🇨🇱 Análisis de Feriados Chilenos:
         - **Feriados Nacionales**: Año Nuevo, Fiestas Patrias, Navidad
@@ -1590,10 +1557,48 @@ def mostrar_analisis_usuarios():
     st.title("👥 Análisis de Usuarios y Performance")
     st.markdown("### Análisis de Productividad por Cargo y Usuario")
     
+    # Inicializar estado de usuarios si no existe
+    if 'usuarios_cargados' not in st.session_state:
+        st.session_state.usuarios_cargados = False
+        st.session_state.archivo_usuarios = None
+        st.session_state.df_usuarios = None
+    
+    # Sección de carga de archivos de usuarios
+    st.markdown("---")
+    st.subheader("📁 Cargar Datos de Usuarios")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        archivo_usuarios = st.file_uploader(
+            "Seleccionar archivo de usuarios:",
+            type=['csv', 'xlsx', 'xls'],
+            help="Archivo con datos de usuarios, cargos y teléfonos",
+            key="uploader_usuarios_page"
+        )
+    
+    with col2:
+        if st.session_state.usuarios_cargados:
+            st.success("✅ Usuarios cargados")
+            num_usuarios = len(st.session_state.df_usuarios) if st.session_state.df_usuarios is not None else 0
+            st.info(f"👥 {num_usuarios} usuarios")
+            
+            if st.button("🗑️ Limpiar Usuarios", use_container_width=True):
+                st.session_state.usuarios_cargados = False
+                st.session_state.archivo_usuarios = None
+                st.session_state.df_usuarios = None
+                st.rerun()
+        else:
+            st.warning("⚠️ No hay datos de usuarios")
+    
+    # Procesar archivo si se carga
+    if archivo_usuarios is not None:
+        procesar_archivo_usuarios(archivo_usuarios)
+    
     # Verificar si hay datos de usuarios cargados
     if not st.session_state.get('usuarios_cargados', False):
-        st.warning("⚠️ No hay datos de usuarios cargados")
-        st.info("💡 Carga un archivo de usuarios en el sidebar para comenzar el análisis")
+        st.markdown("---")
+        st.info("💡 Carga un archivo de usuarios arriba para comenzar el análisis")
         
         # Mostrar formato esperado
         st.markdown("---")
