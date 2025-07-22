@@ -781,6 +781,7 @@ def mostrar_analisis_feriados_chilenos():
 def mostrar_analisis_cargo_feriados():
     """Función para mostrar análisis de cargo con feriados en Streamlit"""
     import streamlit as st
+    import plotly.express as px
     
     st.title("👥 Análisis por Cargo y Feriados")
     st.markdown("---")

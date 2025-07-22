@@ -61,7 +61,12 @@ except ImportError as e:
     HYPEROPT_AVAILABLE = False
 
 try:
-    from feriados_chilenos import mostrar_analisis_feriados_chilenos, mostrar_analisis_cargo_feriados, GestorFeriadosChilenos
+    from feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
+    try:
+        from feriados_chilenos import mostrar_analisis_cargo_feriados
+        CARGO_ANALYSIS_AVAILABLE = True
+    except ImportError:
+        CARGO_ANALYSIS_AVAILABLE = False
     FERIADOS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar feriados_chilenos: {e}")
@@ -624,7 +629,7 @@ def procesar_archivo_subido(archivo_subido):
         st.success(f"✅ Archivo cargado: {len(df)} registros")
         
         # Preguntar si ejecutar pipeline
-        if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True):
+        if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True, key="main_pipeline_btn"):
             processor = PipelineProcessor(temp_path)
             processor.ejecutar_pipeline_completo()
         
@@ -962,7 +967,7 @@ def mostrar_navegacion_contextual():
                 """)
             
             with col2:
-                if st.button("Ir a Preparación de Datos", use_container_width=True):
+                if st.button("Ir a Preparación de Datos", use_container_width=True, key="ir_preparacion_btn"):
                     st.session_state.navegacion_objetivo = "🔧 Preparación de Datos"
                     st.rerun()
     
@@ -976,12 +981,12 @@ def mostrar_navegacion_contextual():
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True):
+            if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True, key="ejecutar_pipeline_btn"):
                 st.session_state.ejecutar_pipeline = True
                 st.info("🚀 Ejecutando pipeline... (En implementación)")
         
         with col2:
-            if st.button("📋 Ver datos cargados", use_container_width=True):
+            if st.button("📋 Ver datos cargados", use_container_width=True, key="ver_datos_btn"):
                 st.session_state.mostrar_preview = True
                 st.info("📋 Mostrando preview de datos...")
     
@@ -996,17 +1001,17 @@ def mostrar_navegacion_contextual():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📊 Ver Dashboard", use_container_width=True, type="primary"):
+            if st.button("📊 Ver Dashboard", use_container_width=True, type="primary", key="ir_dashboard_btn"):
                 st.session_state.navegacion_objetivo = "📊 Dashboard"
                 st.rerun()
         
         with col2:
-            if st.button("🎯 Optimizar ML", use_container_width=True):
+            if st.button("🎯 Optimizar ML", use_container_width=True, key="ir_optimizacion_btn"):
                 st.session_state.navegacion_objetivo = "🎯 Optimización ML"
                 st.rerun()
         
         with col3:
-            if st.button("👥 Análisis Usuarios", use_container_width=True):
+            if st.button("👥 Análisis Usuarios", use_container_width=True, key="ir_usuarios_btn"):
                 st.session_state.navegacion_objetivo = "👥 Análisis de Usuarios"
                 st.rerun()
 
@@ -1284,13 +1289,18 @@ def main():
     elif pagina == "🇨🇱 Feriados Chilenos":
         if FERIADOS_AVAILABLE:
             # Crear tabs para diferentes análisis de feriados
-            tab1, tab2 = st.tabs(["📊 Análisis General", "👥 Análisis por Cargo"])
-            
-            with tab1:
+            if CARGO_ANALYSIS_AVAILABLE:
+                tab1, tab2 = st.tabs(["📊 Análisis General", "👥 Análisis por Cargo"])
+                
+                with tab1:
+                    mostrar_analisis_feriados_chilenos()
+                
+                with tab2:
+                    mostrar_analisis_cargo_feriados()
+            else:
+                # Solo mostrar análisis general si el análisis por cargo no está disponible
+                st.info("💡 Análisis por cargo en desarrollo. Mostrando análisis general de feriados.")
                 mostrar_analisis_feriados_chilenos()
-            
-            with tab2:
-                mostrar_analisis_cargo_feriados()
         else:
             st.error("⚠️ Módulo de feriados chilenos no disponible")
             st.info("Verifica que el archivo feriadoschile.csv esté en el directorio del proyecto")
@@ -1476,7 +1486,7 @@ def mostrar_analisis_usuarios():
     st.dataframe(df_filtrado, use_container_width=True)
     
     # Export de datos
-    if st.button("📥 Exportar Análisis de Usuarios", use_container_width=True):
+    if st.button("📥 Exportar Análisis de Usuarios", use_container_width=True, key="exportar_usuarios_btn"):
         try:
             # Crear reporte de usuarios
             reporte = {
