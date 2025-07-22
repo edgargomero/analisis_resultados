@@ -1001,34 +1001,28 @@ def mostrar_dashboard():
         st.error("Dashboard no disponible")
 
 def mostrar_card_metrica_mejorada(titulo, valor, descripcion, icono, color="#4CAF50", delta=None):
-    """Crea una card de métrica visualmente atractiva"""
-    delta_html = ""
-    if delta is not None:
-        delta_color = "green" if delta >= 0 else "red"
-        delta_symbol = "↑" if delta >= 0 else "↓"
-        delta_html = f'<div style="color: {delta_color}; margin: 5px 0; font-size: 14px;">{delta_symbol} {abs(delta):.1f}%</div>'
+    """Crea una card de métrica usando componentes nativos de Streamlit"""
+    # Usar el componente metric nativo que es más compatible
+    col1, col2 = st.columns([1, 4])
     
-    card_html = f"""
-    <div style="
-        border: 1px solid #ddd;
-        border-radius: 15px;
-        padding: 20px;
-        background: linear-gradient(135deg, {color}15, {color}05);
-        border-left: 5px solid {color};
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        height: 160px;
-        transition: transform 0.3s ease;
-    ">
-        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            <span style="font-size: 28px; margin-right: 12px;">{icono}</span>
-            <div style="margin: 0; color: #333; font-weight: 600; font-size: 18px;">{titulo}</div>
-        </div>
-        <div style="margin: 10px 0; color: {color}; font-weight: bold; font-size: 32px;">{valor}</div>
-        {delta_html}
-        <div style="margin: 0; color: #666; font-size: 13px;">{descripcion}</div>
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
+    with col1:
+        st.markdown(f"<div style='font-size: 32px; text-align: center;'>{icono}</div>", unsafe_allow_html=True)
+    
+    with col2:
+        # Usar st.metric que maneja mejor el HTML
+        if delta is not None:
+            st.metric(
+                label=titulo,
+                value=valor,
+                delta=f"{delta:.1f}%" if delta != 0 else None,
+                help=descripcion
+            )
+        else:
+            st.metric(
+                label=titulo,
+                value=valor,
+                help=descripcion
+            )
 
 def mostrar_progreso_pipeline():
     """Muestra el progreso visual mejorado del pipeline"""
