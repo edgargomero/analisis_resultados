@@ -7,12 +7,14 @@ Sistema completo de predicción de llamadas para call center usando inteligencia
 ## 🎯 Características Principales
 
 - **🤖 Múltiples Modelos de IA**: ARIMA, Prophet, Random Forest, Gradient Boosting
-- **📊 Dashboard Interactivo**: Visualización en tiempo real con Streamlit y Plotly
+- **📊 Dashboard Simplificado**: Interfaz intuitiva siguiendo mejores prácticas UX/UI
+- **🇨🇱 Análisis de Feriados**: Integración completa de feriados chilenos 2023-2025
+- **📈 Análisis Comparativo**: Comparación por hora, día de semana y patrones estacionales
 - **🔍 Auditoría de Datos**: Análisis automático de calidad y patrones
 - **🔀 Segmentación Inteligente**: Clasificación automática de llamadas entrantes/salientes
 - **🚨 Sistema de Alertas**: Detección proactiva de picos de demanda
-- **⚙️ Automatización Completa**: Pipeline programado con notificaciones
-- **📈 Análisis de Atención**: Métricas históricas de los últimos 15, 30 y 90 días
+- **⚙️ Pipeline con Progreso**: Seguimiento visual del estado de ejecución
+- **🌐 Interfaz en Español**: Totalmente localizada con semanas iniciando en lunes
 
 ## 🚀 Instalación y Configuración
 
@@ -72,13 +74,18 @@ python automatizacion_completa.py
 ```
 pcf_scripts/
 ├── 📱 app.py                          # Aplicación principal Streamlit
-├── 📊 dashboard_comparacion.py        # Dashboard de validación
+├── 📊 dashboard_comparacion.py        # Dashboard simplificado UX/UI
+├── 🇨🇱 feriados_chilenos.py           # Sistema de feriados chilenos integrado
 ├── 🔍 auditoria_datos_llamadas.py     # Auditoría de calidad de datos
+├── 📊 preparacion_datos.py            # Módulo de preparación de datos
 ├── 🔀 segmentacion_llamadas.py        # Segmentación de llamadas
 ├── 🤖 sistema_multi_modelo.py         # Sistema multi-modelo
-├── ⚙️ automatizacion_completa.py      # Pipeline automatizado
+├── ⚙️ automatizacion_completa.py      # Pipeline automatizado con progreso
+├── 🎨 ux_mejoras.py                   # Mejoras de experiencia de usuario
 ├── 📋 requirements.txt                # Dependencias
 ├── 📖 README.md                       # Esta documentación
+├── 📝 ejemplo_datos_llamadas.csv      # Datos de ejemplo
+├── 🎄 feriadoschile.csv               # Base de datos de feriados
 └── .streamlit/
     └── config.toml                    # Configuración de Streamlit
 ```
@@ -120,12 +127,13 @@ FECHA;TELEFONO;SENTIDO;ATENDIDA;STATUS
 - Estado actual del sistema
 - **📁 Sección de carga de archivos en el sidebar**
 
-### 2. 📊 Dashboard de Validación
-- **Análisis de Atención**: Gráficas de los últimos 15, 30 y 90 días
-- **Comparación de Modelos**: Performance de algoritmos individuales
-- **Predicciones Futuras**: Visualización de predicciones con intervalos de confianza
-- **Sistema de Alertas**: Alertas validadas con niveles de confianza
-- **Métricas de Objetivo**: Progress hacia objetivos del proyecto
+### 2. 📊 Dashboard Simplificado (Nuevas Funcionalidades)
+- **📈 Análisis Comparativo**: Pestañas organizadas para mejor navegación
+- **⏰ Análisis por Horas**: Patrones detallados por hora del día
+- **📅 Análisis Semanal**: Comparación por días de la semana (Lunes a Domingo)
+- **🇨🇱 Impacto de Feriados**: Análisis específico de feriados chilenos
+- **📊 Métricas Clave**: KPIs principales en formato visual intuitivo
+- **🌐 Interfaz en Español**: Gráficos, etiquetas y navegación completamente en español
 
 ### 3. 🔍 Auditoría de Datos
 - Análisis automático de calidad de datos
@@ -145,11 +153,24 @@ FECHA;TELEFONO;SENTIDO;ATENDIDA;STATUS
 - Validación cruzada temporal
 - Generación de predicciones para 28 días
 
-### 6. ⚙️ Automatización
-- Pipeline completo automatizado
+### 6. 🇨🇱 Análisis de Feriados Chilenos (NUEVO)
+- **Base de datos integrada**: 53 feriados chilenos (2023-2025)
+- **Análisis de impacto**: Comparación de llamadas en días feriados vs normales
+- **Categorización**: Feriados religiosos, cívicos, electorales y culturales
+- **Predicción mejorada**: Los modelos consideran el impacto de feriados automáticamente
+
+### 7. 📊 Preparación de Datos (NUEVO)
+- **Carga flexible**: CSV, Excel y JSON
+- **Validación automática**: Verificación de columnas requeridas
+- **Mapeo inteligente**: Detección automática de formatos de datos
+- **Integración API**: Conectividad con Reservo y otras fuentes
+
+### 8. ⚙️ Automatización con Progreso
+- Pipeline completo automatizado con **indicadores visuales de progreso**
+- **Barra de estado**: Seguimiento en tiempo real del proceso
+- **Estimación de tiempo**: Tiempo restante para completar
 - Programación de ejecuciones
 - Sistema de notificaciones
-- Controles manuales
 
 ## 📈 Métricas y Objetivos
 

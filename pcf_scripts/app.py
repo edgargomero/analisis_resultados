@@ -508,31 +508,155 @@ class PipelineProcessor:
             return False
     
     def ejecutar_pipeline_completo(self):
-        """Ejecutar todo el pipeline"""
+        """Ejecutar todo el pipeline con indicadores de progreso mejorados"""
         st.header("🚀 Ejecutando Pipeline Completo de CEAPSI")
         
-        with st.spinner("Procesando datos..."):
-            # Crear barra de progreso
+        # Configuración de pasos del pipeline con estimaciones de tiempo
+        pasos = [
+            {
+                "nombre": "Auditoría de Datos",
+                "icono": "🔍",
+                "funcion": self.ejecutar_auditoria,
+                "tiempo_estimado": 15,
+                "descripcion": "Analizando calidad y patrones de datos"
+            },
+            {
+                "nombre": "Segmentación de Llamadas", 
+                "icono": "🔀",
+                "funcion": self.ejecutar_segmentacion,
+                "tiempo_estimado": 20,
+                "descripcion": "Clasificando llamadas entrantes y salientes"
+            },
+            {
+                "nombre": "Entrenamiento de Modelos",
+                "icono": "🤖", 
+                "funcion": self.ejecutar_entrenamiento_modelos,
+                "tiempo_estimado": 45,
+                "descripcion": "Entrenando 4 algoritmos de IA (ARIMA, Prophet, RF, GB)"
+            },
+            {
+                "nombre": "Generación de Predicciones",
+                "icono": "🔮",
+                "funcion": self.generar_predicciones,
+                "tiempo_estimado": 25,
+                "descripcion": "Generando predicciones para los próximos 28 días"
+            }
+        ]
+        
+        # Calcular tiempo total estimado
+        tiempo_total_estimado = sum(paso["tiempo_estimado"] for paso in pasos)
+        
+        # Crear contenedores para progreso visual
+        progress_container = st.container()
+        with progress_container:
+            # Barra de progreso general
+            st.markdown("### 📊 Progreso General")
             progress_bar = st.progress(0)
-            status_text = st.empty()
             
-            pasos = [
-                ("Auditoría de Datos", self.ejecutar_auditoria),
-                ("Segmentación de Llamadas", self.ejecutar_segmentacion),
-                ("Entrenamiento de Modelos", self.ejecutar_entrenamiento_modelos),
-                ("Generación de Predicciones", self.generar_predicciones)
-            ]
+            # Información de tiempo
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                tiempo_transcurrido_placeholder = st.empty()
+            with col2:
+                tiempo_restante_placeholder = st.empty()
+            with col3:
+                paso_actual_placeholder = st.empty()
             
-            for i, (nombre_paso, funcion_paso) in enumerate(pasos):
-                status_text.text(f"Ejecutando: {nombre_paso}")
-                
-                if funcion_paso():
-                    progress_bar.progress((i + 1) / len(pasos))
+            # Estado detallado de cada paso
+            st.markdown("### 📋 Estado Detallado")
+            pasos_status = []
+            for paso in pasos:
+                pasos_status.append(st.empty())
+        
+        # Inicializar tiempos
+        import time
+        tiempo_inicio = time.time()
+        tiempo_acumulado = 0
+        
+        # Ejecutar cada paso
+        for i, paso in enumerate(pasos):
+            # Actualizar paso actual
+            paso_actual_placeholder.metric(
+                "Paso Actual",
+                f"{i+1}/{len(pasos)}",
+                f"{paso['nombre']}"
+            )
+            
+            # Actualizar estado de todos los pasos
+            for j, status_placeholder in enumerate(pasos_status):
+                if j < i:
+                    # Pasos completados
+                    status_placeholder.success(f"✅ {pasos[j]['icono']} {pasos[j]['nombre']} - Completado")
+                elif j == i:
+                    # Paso actual
+                    status_placeholder.info(f"⏳ {paso['icono']} {paso['nombre']} - {paso['descripcion']}")
                 else:
-                    st.error(f"❌ Error en {nombre_paso}")
-                    return False
+                    # Pasos pendientes
+                    status_placeholder.warning(f"⏸️ {pasos[j]['icono']} {pasos[j]['nombre']} - Pendiente")
             
-            status_text.text("¡Pipeline completado exitosamente!")
+            # Ejecutar paso con medición de tiempo
+            tiempo_paso_inicio = time.time()
+            
+            try:
+                if paso["funcion"]():
+                    tiempo_paso_fin = time.time()
+                    tiempo_paso_real = tiempo_paso_fin - tiempo_paso_inicio
+                    tiempo_acumulado += tiempo_paso_real
+                    
+                    # Actualizar progreso
+                    progreso = (i + 1) / len(pasos)
+                    progress_bar.progress(progreso)
+                    
+                    # Actualizar tiempos
+                    tiempo_transcurrido = time.time() - tiempo_inicio
+                    tiempo_restante = (tiempo_total_estimado - tiempo_acumulado) if tiempo_acumulado < tiempo_total_estimado else 0
+                    
+                    tiempo_transcurrido_placeholder.metric(
+                        "Tiempo Transcurrido",
+                        f"{int(tiempo_transcurrido)}s",
+                        f"{tiempo_transcurrido/60:.1f} min"
+                    )
+                    
+                    tiempo_restante_placeholder.metric(
+                        "Tiempo Restante",
+                        f"{int(tiempo_restante)}s",
+                        f"{tiempo_restante/60:.1f} min"
+                    )
+                    
+                    # Marcar paso como completado
+                    pasos_status[i].success(f"✅ {paso['icono']} {paso['nombre']} - Completado ({tiempo_paso_real:.1f}s)")
+                    
+                else:
+                    pasos_status[i].error(f"❌ {paso['icono']} {paso['nombre']} - Error en ejecución")
+                    st.error(f"❌ Error en {paso['nombre']}")
+                    return False
+                    
+            except Exception as e:
+                pasos_status[i].error(f"❌ {paso['icono']} {paso['nombre']} - Error: {str(e)}")
+                st.error(f"❌ Error en {paso['nombre']}: {str(e)}")
+                return False
+        
+        # Finalización exitosa
+        progress_bar.progress(1.0)
+        paso_actual_placeholder.metric(
+            "Estado Final",
+            "Completado",
+            "🎉 ¡Éxito!"
+        )
+        
+        tiempo_total_real = time.time() - tiempo_inicio
+        tiempo_transcurrido_placeholder.metric(
+            "Tiempo Total",
+            f"{int(tiempo_total_real)}s",
+            f"{tiempo_total_real/60:.1f} min"
+        )
+        tiempo_restante_placeholder.metric(
+            "Tiempo Restante",
+            "0s",
+            "Finalizado"
+        )
+        
+        st.balloons()
         
         # Mostrar resumen final
         self.mostrar_resumen_pipeline()
@@ -887,55 +1011,163 @@ def mostrar_card_metrica_mejorada(titulo, valor, descripcion, icono, color="#4CA
     st.markdown(card_html, unsafe_allow_html=True)
 
 def mostrar_progreso_pipeline():
-    """Muestra el progreso visual del pipeline"""
-    st.markdown("### 📋 Estado del Pipeline")
+    """Muestra el progreso visual mejorado del pipeline"""
+    st.markdown("### 📋 Estado del Pipeline CEAPSI")
     
-    # Definir pasos del pipeline
+    # Definir pasos del pipeline con descripciones detalladas
     pasos = [
-        {"nombre": "Cargar Datos", "icono": "📁", "completado": st.session_state.get('datos_cargados', False)},
-        {"nombre": "Validar", "icono": "🔍", "completado": st.session_state.get('datos_cargados', False)},
-        {"nombre": "Procesar", "icono": "⚙️", "completado": st.session_state.get('datos_cargados', False)},
-        {"nombre": "Entrenar", "icono": "🤖", "completado": st.session_state.get('pipeline_completado', False)},
-        {"nombre": "Predecir", "icono": "🔮", "completado": st.session_state.get('pipeline_completado', False)},
-        {"nombre": "Visualizar", "icono": "📊", "completado": st.session_state.get('pipeline_completado', False)}
+        {
+            "nombre": "Cargar Datos", 
+            "icono": "📁", 
+            "completado": st.session_state.get('datos_cargados', False),
+            "descripcion": "Archivo CSV/Excel cargado",
+            "tiempo_estimado": "Instantáneo"
+        },
+        {
+            "nombre": "Auditar", 
+            "icono": "🔍", 
+            "completado": st.session_state.get('datos_cargados', False),
+            "descripcion": "Calidad y patrones verificados",
+            "tiempo_estimado": "~15s"
+        },
+        {
+            "nombre": "Segmentar", 
+            "icono": "🔀", 
+            "completado": st.session_state.get('datos_cargados', False),
+            "descripcion": "Llamadas clasificadas",
+            "tiempo_estimado": "~20s"
+        },
+        {
+            "nombre": "Entrenar IA", 
+            "icono": "🤖", 
+            "completado": st.session_state.get('pipeline_completado', False),
+            "descripcion": "4 modelos entrenados",
+            "tiempo_estimado": "~45s"
+        },
+        {
+            "nombre": "Predecir", 
+            "icono": "🔮", 
+            "completado": st.session_state.get('pipeline_completado', False),
+            "descripcion": "28 días proyectados",
+            "tiempo_estimado": "~25s"
+        },
+        {
+            "nombre": "Dashboard", 
+            "icono": "📊", 
+            "completado": st.session_state.get('pipeline_completado', False),
+            "descripcion": "Visualizaciones listas",
+            "tiempo_estimado": "Instantáneo"
+        }
     ]
     
-    # Crear indicador visual de progreso
-    cols = st.columns(len(pasos))
+    # Calcular estado del pipeline
+    completados = sum(1 for paso in pasos if paso["completado"])
+    total_pasos = len(pasos)
+    progreso = completados / total_pasos
     
-    for i, (col, paso) in enumerate(zip(cols, pasos)):
-        with col:
+    # Estado general del pipeline
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Progreso Total",
+            f"{completados}/{total_pasos}",
+            f"{progreso*100:.0f}% completado"
+        )
+    
+    with col2:
+        if st.session_state.get('pipeline_completado', False):
+            st.metric("Estado", "🎉 Completado", "Listo para análisis")
+        elif st.session_state.get('datos_cargados', False):
+            st.metric("Estado", "⚙️ Datos listos", "Ejecutar pipeline")
+        else:
+            st.metric("Estado", "⏳ Esperando", "Cargar datos")
+    
+    with col3:
+        tiempo_total = sum(15 + 20 + 45 + 25 for _ in [1])  # Total estimado: ~105s
+        st.metric(
+            "Tiempo Estimado",
+            f"{tiempo_total//60}m {tiempo_total%60}s",
+            "Proceso completo"
+        )
+    
+    # Barra de progreso principal con colores
+    st.markdown("#### 📊 Progreso Visual")
+    
+    if progreso == 1.0:
+        st.progress(progreso, text="🎉 ¡Pipeline completado exitosamente!")
+    elif progreso > 0:
+        st.progress(progreso, text=f"⚙️ Procesando... {progreso*100:.0f}% completado")
+    else:
+        st.progress(progreso, text="⏳ Esperando datos para comenzar")
+    
+    # Indicadores visuales de cada paso
+    st.markdown("#### 🔄 Estado Detallado de Pasos")
+    
+    for i, paso in enumerate(pasos):
+        col1, col2 = st.columns([1, 4])
+        
+        with col1:
+            # Icono del paso con estado
             if paso["completado"]:
                 st.markdown(f"""
-                <div style="text-align: center; padding: 10px; background: #d4edda; border-radius: 10px; border: 2px solid #28a745;">
-                    <div style="font-size: 24px;">{paso['icono']}</div>
-                    <div style="font-size: 12px; font-weight: bold; color: #155724;">{paso['nombre']}</div>
-                    <div style="font-size: 10px; color: #155724;">✅ Completado</div>
+                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #d4edda, #c3e6cb); 
+                           border-radius: 15px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 32px;">{paso['icono']}</div>
+                    <div style="font-size: 10px; color: #155724; font-weight: bold;">✅ HECHO</div>
                 </div>
                 """, unsafe_allow_html=True)
             elif i == 0 or pasos[i-1]["completado"]:
+                # Próximo paso a ejecutar
                 st.markdown(f"""
-                <div style="text-align: center; padding: 10px; background: #fff3cd; border-radius: 10px; border: 2px solid #ffc107;">
-                    <div style="font-size: 24px;">{paso['icono']}</div>
-                    <div style="font-size: 12px; font-weight: bold; color: #856404;">{paso['nombre']}</div>
-                    <div style="font-size: 10px; color: #856404;">⏳ Pendiente</div>
+                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #fff3cd, #ffeaa7); 
+                           border-radius: 15px; border: 2px solid #ffc107; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                           animation: pulse 2s infinite;">
+                    <div style="font-size: 32px;">{paso['icono']}</div>
+                    <div style="font-size: 10px; color: #856404; font-weight: bold;">⏳ SIGUIENTE</div>
                 </div>
+                <style>
+                @keyframes pulse {{
+                    0% {{ transform: scale(1); }}
+                    50% {{ transform: scale(1.05); }}
+                    100% {{ transform: scale(1); }}
+                }}
+                </style>
                 """, unsafe_allow_html=True)
             else:
+                # Pasos futuros
                 st.markdown(f"""
-                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 10px; border: 2px solid #dee2e6;">
-                    <div style="font-size: 24px; opacity: 0.5;">{paso['icono']}</div>
-                    <div style="font-size: 12px; color: #6c757d;">{paso['nombre']}</div>
-                    <div style="font-size: 10px; color: #6c757d;">⏸️ Esperando</div>
+                <div style="text-align: center; padding: 15px; background: #f8f9fa; 
+                           border-radius: 15px; border: 2px solid #dee2e6;">
+                    <div style="font-size: 32px; opacity: 0.3;">{paso['icono']}</div>
+                    <div style="font-size: 10px; color: #6c757d;">⏸️ ESPERA</div>
                 </div>
                 """, unsafe_allow_html=True)
+        
+        with col2:
+            # Información del paso
+            if paso["completado"]:
+                st.success(f"**{paso['nombre']}** - {paso['descripcion']}")
+            elif i == 0 or pasos[i-1]["completado"]:
+                st.info(f"**{paso['nombre']}** - {paso['descripcion']} ({paso['tiempo_estimado']})")
+            else:
+                st.write(f"**{paso['nombre']}** - {paso['descripcion']} ({paso['tiempo_estimado']})")
+        
+        # Línea conectora entre pasos (excepto el último)
+        if i < len(pasos) - 1:
+            st.markdown("""
+            <div style="text-align: center; padding: 5px;">
+                <div style="width: 2px; height: 20px; background: #dee2e6; margin: 0 auto;"></div>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # Barra de progreso general
-    completados = sum(1 for paso in pasos if paso["completado"])
-    progreso = completados / len(pasos)
-    
-    st.progress(progreso)
-    st.caption(f"Progreso: {completados}/{len(pasos)} pasos completados ({progreso*100:.0f}%)")
+    # Información adicional
+    if progreso == 1.0:
+        st.success("🚀 **¡Sistema listo!** Navega al Dashboard para ver predicciones y análisis detallados.")
+    elif st.session_state.get('datos_cargados', False):
+        st.info("📂 **Datos cargados correctamente.** Haz clic en 'Ejecutar Pipeline' para comenzar el procesamiento.")
+    else:
+        st.warning("📁 **Comienza aquí:** Sube un archivo CSV o Excel con tus datos de llamadas usando el panel lateral.")
     
     return completados, len(pasos)
 
