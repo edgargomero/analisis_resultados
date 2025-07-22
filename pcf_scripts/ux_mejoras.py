@@ -283,8 +283,8 @@ def mostrar_dashboard_mejorado():
         # Gráfico de tendencia simplificado
         fig_trend = go.Figure()
         
-        # Datos de ejemplo
-        fechas = pd.date_range(start='2024-01-01', periods=30, freq='D')
+        # IMPORTANTE: Usar fechas fijas para evitar data leakage en demos científicas
+        fechas = pd.date_range(start='2023-01-01', periods=30, freq='D')
         llamadas = [100 + i*2 + np.random.randint(-10, 10) for i in range(30)]
         
         fig_trend.add_trace(go.Scatter(

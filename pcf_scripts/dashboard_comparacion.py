@@ -1576,10 +1576,12 @@ class DashboardValidacionCEAPSI:
     def _crear_datos_ejemplo_historicos(self, tipo_llamada):
         """Crea datos de ejemplo para cuando no hay archivos históricos"""
         try:
-            # Crear 60 días de datos de ejemplo
+            # IMPORTANTE: Usar fechas fijas para evitar data leakage en demos científicas
+            # Crear 60 días de datos de ejemplo hasta una fecha fija
+            fecha_fin = pd.to_datetime('2023-12-31')  # Fecha fija para consistencia
             fechas = pd.date_range(
-                start=datetime.now() - timedelta(days=60),
-                end=datetime.now() - timedelta(days=1),
+                start=fecha_fin - timedelta(days=60),
+                end=fecha_fin,
                 freq='D'
             )
             
@@ -1632,10 +1634,12 @@ class DashboardValidacionCEAPSI:
     def _crear_datos_ejemplo_completos(self):
         """Crea un dataset completo de ejemplo para demostración"""
         try:
-            # Crear 90 días de datos de ejemplo con llamadas realistas
+            # IMPORTANTE: Usar fechas fijas para evitar data leakage en demos científicas
+            # Crear 90 días de datos de ejemplo hasta una fecha fija
+            fecha_fin = pd.to_datetime('2023-12-31')  # Fecha fija para consistencia
             fechas = pd.date_range(
-                start=datetime.now() - timedelta(days=90),
-                end=datetime.now() - timedelta(days=1),
+                start=fecha_fin - timedelta(days=90),
+                end=fecha_fin,
                 freq='D'
             )
             

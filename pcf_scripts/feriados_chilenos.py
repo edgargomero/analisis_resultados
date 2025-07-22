@@ -700,8 +700,9 @@ def mostrar_analisis_feriados_chilenos():
     if hasattr(st.session_state, 'archivo_datos') and st.session_state.archivo_datos is not None:
         try:
             # Leer datos (esto debe ser adaptado según la estructura real de datos)
+            # IMPORTANTE: Usar fechas fijas para evitar data leakage en demos científicas
             df_sample = pd.DataFrame({
-                'fecha': pd.date_range('2024-01-01', '2024-12-31', freq='D'),
+                'fecha': pd.date_range('2023-01-01', '2023-12-31', freq='D'),
                 'llamadas': np.random.randint(50, 200, 365)
             })
             

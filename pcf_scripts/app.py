@@ -467,6 +467,15 @@ class PipelineProcessor:
                 
                 # Generar fechas futuras (próximos 28 días laborales)
                 ultima_fecha = dataset['ds'].max()
+                
+                # VALIDACIÓN CRÍTICA: Evitar data leakage para presentaciones científicas
+                fecha_hoy = pd.to_datetime('today').normalize()
+                if ultima_fecha >= fecha_hoy:
+                    st.error(f"🚨 **DATA LEAKAGE DETECTADO** 🚨")
+                    st.error(f"Los datos contienen fechas futuras: última fecha = {ultima_fecha.date()}, hoy = {fecha_hoy.date()}")
+                    st.error("Esto compromete la validez científica del modelo. Revise los datos de entrada.")
+                    return False
+                
                 fechas_futuras = []
                 fecha_actual = ultima_fecha + timedelta(days=1)
                 
