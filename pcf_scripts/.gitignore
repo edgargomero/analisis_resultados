@@ -55,10 +55,22 @@ datos_prophet_*.csv
 # Streamlit
 .streamlit/secrets.toml
 
-# Authentication
+# CRÍTICO: Archivos de seguridad - NUNCA COMMITEAR
+.env
+.env.*
+*_credentials.*
+secrets.toml
+
+# Autenticación Supabase
+supabase_config.*
+
+# Legacy authentication (deprecated)
 config.yaml
 auth_config.yaml
-*_credentials.yaml
+legacy/
+
+# Streamlit secrets
+.streamlit/secrets.toml
 
 # Backup files
 *.backup

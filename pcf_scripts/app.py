@@ -38,13 +38,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger('CEAPSI_APP')
 
-# Importar sistema de autenticación
+# Importar autenticación Supabase EXCLUSIVAMENTE
 try:
-    from auth import AuthManager
-    AUTH_AVAILABLE = True
+    from supabase_auth import SupabaseAuthManager
+    from dotenv import load_dotenv
+    load_dotenv()  # Cargar variables de entorno
+    SUPABASE_AUTH_AVAILABLE = True
+    logger.info("Sistema de autenticación Supabase cargado")
 except ImportError as e:
-    logger.warning(f"No se pudo importar auth: {e}")
-    AUTH_AVAILABLE = False
+    logger.critical(f"FALLO CRÍTICO: No se pudo cargar autenticación Supabase: {e}")
+    SUPABASE_AUTH_AVAILABLE = False
 
 # Importar módulos del sistema con manejo de errores
 try:
@@ -1432,33 +1435,47 @@ def mostrar_ayuda_contextual():
 def main():
     """Función principal"""
     
-    # Sistema de autenticación
-    if AUTH_AVAILABLE:
-        try:
-            auth_manager = AuthManager()
-            
-            # Verificar autenticación
-            if not auth_manager.require_auth():
-                st.stop()
-            
-            # Mostrar información del usuario y logout en sidebar
-            user_info = auth_manager.get_user_info()
-            if user_info:
-                with st.sidebar:
-                    st.markdown("---")
-                    st.markdown("### 👤 Usuario Actual")
-                    st.markdown(f"**{user_info['name']}**")
-                    st.caption(f"@{user_info['username']}")
-                    
-                    # Botón de logout
-                    if st.button("🚪 Cerrar Sesión", key="logout_btn", use_container_width=True):
-                        auth_manager.logout()
-                        st.rerun()
-                        
-        except Exception as e:
-            logger.error(f"Error en sistema de autenticación: {e}")
-            st.error("Error en el sistema de autenticación")
+    # Sistema de autenticación EXCLUSIVAMENTE Supabase
+    auth_manager = None
+    
+    if not SUPABASE_AUTH_AVAILABLE:
+        st.error("🔒 **Sistema de Seguridad No Disponible**")
+        st.error("La aplicación requiere autenticación Supabase para funcionar")
+        st.info("""
+        **Configuración requerida:**
+        - Variables SUPABASE_URL y SUPABASE_KEY en archivo .env
+        - Dependencias: supabase, python-dotenv
+        - Contacte al administrador: soporte@ceapsi.cl
+        """)
+        st.stop()
+    
+    try:
+        auth_manager = SupabaseAuthManager()
+        
+        if not auth_manager.is_available():
+            st.error("🔒 **Error de Conexión Segura**") 
+            st.error("No se puede conectar con el sistema de autenticación")
+            st.info("Verifique la configuración de Supabase o contacte soporte@ceapsi.cl")
             st.stop()
+        
+        # Verificar autenticación con Supabase (OBLIGATORIO)
+        if not auth_manager.require_auth():
+            st.stop()
+        
+        # Mostrar información del usuario autenticado
+        auth_manager.sidebar_user_info()
+        
+        # Mensaje de seguridad en desarrollo
+        if os.getenv('ENVIRONMENT') == 'development':
+            with st.sidebar:
+                st.warning("⚠️ Modo Desarrollo")
+                        
+    except Exception as e:
+        logger.error(f"Error crítico en sistema de autenticación: {e}")
+        st.error("🚨 **Error Crítico de Seguridad**")
+        st.error("Sistema de autenticación falló - acceso denegado")
+        st.info("Contacte inmediatamente a soporte@ceapsi.cl")
+        st.stop()
     
     # Mostrar sección de carga de archivos
     mostrar_seccion_carga_archivos()
