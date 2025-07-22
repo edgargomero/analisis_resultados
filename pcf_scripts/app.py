@@ -509,7 +509,7 @@ class PipelineProcessor:
     
     def ejecutar_pipeline_completo(self):
         """Ejecutar todo el pipeline con indicadores de progreso mejorados"""
-        st.header("🚀 Ejecutando Pipeline Completo de CEAPSI")
+        st.subheader("🚀 Ejecutando Pipeline Completo")
         
         # Configuración de pasos del pipeline con estimaciones de tiempo
         pasos = [
@@ -1225,15 +1225,14 @@ def mostrar_pagina_inicio():
     <div style="
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 40px 30px;
+        padding: 20px 30px;
         border-radius: 20px;
         text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        margin-bottom: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     ">
-        <h1 style="margin: 0; font-size: 48px; font-weight: 700;">📞 CEAPSI</h1>
-        <h3 style="margin: 10px 0 0 0; opacity: 0.9; font-weight: 400;">Sistema de Predicción Inteligente de Llamadas</h3>
-        <div style="margin: 15px 0 0 0; opacity: 0.8;">Powered by AI • Real-time Analytics • Smart Predictions</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 600;">📞 CEAPSI</h1>
+        <div style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">Sistema de Predicción Inteligente de Llamadas</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1515,7 +1514,7 @@ def main():
     elif pagina == "👥 Análisis de Usuarios":
         mostrar_analisis_usuarios()
     elif pagina == "ℹ️ Información":
-        st.title("ℹ️ Información del Sistema")
+        st.header("ℹ️ Información del Sistema")
         st.markdown("""
         ## 🎯 Pipeline Automatizado CEAPSI
         
@@ -1554,8 +1553,8 @@ def main():
 def mostrar_analisis_usuarios():
     """Página de análisis de usuarios y performance por cargos"""
     
-    st.title("👥 Análisis de Usuarios y Performance")
-    st.markdown("### Análisis de Productividad por Cargo y Usuario")
+    st.header("👥 Análisis de Usuarios")
+    st.markdown("**Gestión de usuarios y análisis de productividad**")
     
     # Inicializar estado de usuarios si no existe
     if 'usuarios_cargados' not in st.session_state:
