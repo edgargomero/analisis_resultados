@@ -52,8 +52,14 @@ logs/
 # Temporary placeholder data files
 datos_prophet_*.csv
 
-# Streamlit
-.streamlit/secrets.toml
+# Streamlit - IMPORTANTE: No enviar configuración local
+.streamlit/
+!.streamlit/config.toml
+!.streamlit/secrets.toml.example
+
+# Claude AI - Configuración local
+.claude/
+../.claude/
 
 # CRÍTICO: Archivos de seguridad - NUNCA COMMITEAR
 .env
@@ -68,9 +74,6 @@ supabase_config.*
 config.yaml
 auth_config.yaml
 legacy/
-
-# Streamlit secrets
-.streamlit/secrets.toml
 
 # Backup files
 *.backup
