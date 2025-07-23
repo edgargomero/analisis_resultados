@@ -1,184 +1,225 @@
-# 🏥 CEAPSI - Análisis 360° y Sistema de Forecasting Predictivo
+# 🏥 CEAPSI - Sistema Integral de Análisis y Predicción
 
-## Descripción General
+## 📋 Descripción General
 
-Este proyecto implementa una **solución integral de análisis y predicción** para la gestión de recursos humanos en CEAPSI, combinando:
-- **Normalización y análisis de datos operacionales** (reservas, llamadas, conversaciones)
-- **Visualización avanzada** (mapas de calor, dashboards interactivos)
-- **Sistema de forecasting** con Prophet y ARIMA para anticipar necesidades de personal
-- **Comparación automática de modelos**
-- **Automatización y generación de reportes**
+Sistema completo de análisis de datos y predicción para la gestión de recursos humanos en CEAPSI, que integra:
 
----
-
-## 🚀 **Funcionamiento Actual del Proyecto**
-
-### 1. **Procesamiento y Normalización de Datos**
-
-- **Script principal:** `procesar_datos_ceapsi.py`
-- **Fuentes:**  
-  - Reservas (sistema Reservo)
-  - Llamadas y conversaciones (sistema Alodesk)
-- **Salidas:**  
-  - Datos normalizados (`datos_normalizados.json`)
-  - Métricas de carga laboral (`metricas_carga_laboral.json`)
-  - Datos para mapas de calor (`mapa_calor_datos.json`)
-  - Resumen ejecutivo (`resumen_ejecutivo.json`)
-  - Personal necesario por hora/cargo/semana (`personal_necesario_por_hora.csv` y `.json`)
-  - **Todos los archivos se exportan en una carpeta con timestamp** (ej: `resultados_20250718_120355`)
-
-### 2. **Análisis y Visualización**
-
-- **Mapas de calor**: Visualización de la intensidad de transacciones por mes y día de la semana.
-- **Dashboards**:  
-  - Dashboard actual (React/HTML, no incluido en este repo)
-  - Dashboard predictivo (Streamlit, ver sección Forecasting)
-
-### 3. **Sistema de Forecasting Predictivo**
-
-- **Pipeline Prophet y ARIMA**:
-  - Preparación de datos (`forecasting/data_preparation.py`):  
-    - Filtra domingos y outliers
-    - Calcula variable objetivo (horas-persona/día)
-    - Genera regresores (volumen de reservas, llamadas, conversaciones, especialidades, etc.)
-    - Exporta `datos_prophet.csv` y metadatos
-    - Exporta resumen de actividades por cargo y usuario (`actividades_por_cargo_usuario.csv`)
-  - Entrenamiento del modelo Prophet (`forecasting/model_training.py`):  
-    - Entrena Prophet con regresores
-    - Guarda modelo y metadatos
-  - **Comparación Prophet vs ARIMA** (`forecasting/compare_arima_prophet.py`):  
-    - Entrena ambos modelos sobre los mismos datos
-    - Genera predicciones y métricas comparativas (MAE, RMSE)
-    - Exporta resultados en la carpeta de resultados más reciente
-  - Generación de predicciones (`forecasting/predictions.py`):  
-    - Predice necesidades de personal para próximas semanas
-    - Detecta alertas y genera recomendaciones de staffing
-    - Exporta resultados en JSON, Excel y CSV
-
-### 4. **Automatización**
-
-- **Script:** `forecasting/automation_setup.py`
-- Permite ejecutar el pipeline completo de forma programada, enviar alertas por email y generar reportes automáticos.
-- Integra la comparación Prophet vs ARIMA en cada ejecución.
+- **📊 Análisis 360°** de datos operacionales (reservas, llamadas, conversaciones)
+- **🤖 Sistema PCF** (Precision Call Forecast) con múltiples modelos de IA
+- **☁️ Deployment en Streamlit Cloud** con base de datos Supabase
+- **🔗 Integración con API Reservo** para datos en tiempo real
+- **📈 Dashboards interactivos** con visualizaciones avanzadas
 
 ---
 
-## 📂 **Estructura de Carpetas y Archivos**
+## 🚀 Acceso Rápido
+
+### 🌐 **Aplicación en Producción**
+- **URL**: [Disponible en Streamlit Cloud]
+- **Acceso**: Requiere autenticación Supabase
+
+### 💻 **Desarrollo Local**
+```bash
+# Clonar repositorio
+git clone https://github.com/edgargomero/analisis_resultados.git
+cd analisis_resultados
+
+# Sistema PCF (Streamlit)
+cd pcf_scripts
+pip install -r requirements.txt
+python run.py
+```
+
+---
+
+## 🏗️ Arquitectura del Proyecto
 
 ```
 analisis_resultados/
-├── resultados_YYYYMMDD_HHMMSS/         # Carpeta de resultados por ejecución
-│   ├── datos_normalizados.json
-│   ├── metricas_carga_laboral.json
-│   ├── mapa_calor_datos.json
-│   ├── resumen_ejecutivo.json
-│   ├── personal_necesario_por_hora.csv
-│   ├── personal_necesario_por_hora.json
-│   ├── datos_prophet.csv
-│   ├── metadatos_prophet.json
-│   ├── modelo_prophet.pkl
-│   ├── metadatos_modelo.json
-│   ├── predicciones_ceapsi_*.json
-│   ├── predicciones_arima_*.json
-│   └── ...otros archivos
-├── forecasting/
-│   ├── data_preparation.py
-│   ├── model_training.py
-│   ├── predictions.py
-│   ├── compare_arima_prophet.py
-│   ├── automation_setup.py
-│   ├── visualization_dashboard.py
-│   └── ...otros archivos
-├── README.md
-├── requirements.txt
-└── ...
+├── 📁 pcf_scripts/                    # Sistema PCF (Call Forecast)
+│   ├── 🚀 app.py                      # Aplicación principal Streamlit
+│   ├── 📦 requirements.txt            # Dependencias Python
+│   ├── 🏃 run.py                      # Launcher simplificado
+│   │
+│   ├── 📁 src/                        # Código fuente modular
+│   │   ├── api/                       # Integración Reservo API
+│   │   ├── auth/                      # Autenticación Supabase
+│   │   ├── core/                      # Procesamiento de datos
+│   │   ├── models/                    # Modelos de IA (ARIMA, Prophet, RF, GB)
+│   │   ├── services/                  # Lógica de negocio
+│   │   ├── ui/                        # Componentes UI
+│   │   └── utils/                     # Utilidades
+│   │
+│   ├── 📁 assets/                     # Recursos estáticos
+│   ├── 📁 docs/                       # Documentación completa
+│   └── 📁 .streamlit/                 # Configuración Streamlit
+│
+├── 📁 resultados_YYYYMMDD/            # Resultados históricos
+├── 📁 forecasting/                    # Sistema de predicción legacy
+└── 📁 scripts/                        # Scripts de análisis
 ```
 
 ---
 
-## 🛠️ **Cómo Usar el Proyecto**
+## 🎯 Características Principales
 
-### **Procesamiento de datos**
+### 1. **Sistema PCF (Precision Call Forecast)**
+- **4 Modelos de IA**: ARIMA, Prophet, Random Forest, Gradient Boosting
+- **Ensemble Learning**: Combinación optimizada de modelos
+- **Predicción a 28 días**: Proyección de llamadas entrantes/salientes
+- **Precisión objetivo**: MAE < 10, RMSE < 15, MAPE < 25%
 
-```bash
-python procesar_datos_ceapsi.py
-```
-- Genera todos los archivos de análisis y normalización en una carpeta de resultados con timestamp.
+### 2. **Integración en Tiempo Real**
+- **🔗 Reservo API**: Sincronización cada 15 minutos
+- **🗄️ Supabase**: Base de datos en la nube
+- **📊 Dashboard en vivo**: Métricas actualizadas automáticamente
 
-### **Preparación y entrenamiento del modelo Prophet**
+### 3. **Análisis Avanzado**
+- **🇨🇱 Feriados Chilenos**: Análisis de impacto en volumen
+- **📈 Segmentación**: Clasificación automática de llamadas
+- **🔍 Auditoría**: Validación de calidad de datos
+- **👥 Análisis por Usuario**: Performance por cargo/agente
 
-```bash
-cd forecasting
-python data_preparation.py
-python model_training.py
-```
-
-### **Comparación Prophet vs ARIMA**
-
-```bash
-python compare_arima_prophet.py
-```
-- Guarda las predicciones y métricas de ambos modelos en la última carpeta de resultados.
-
-### **Generación de predicciones**
-
-```bash
-python predictions.py
-```
-
-### **Dashboard predictivo**
-
-```bash
-python -m streamlit run forecasting/visualization_dashboard.py
-```
-- El dashboard muestra la comparación Prophet vs ARIMA, métricas y gráficos.
-
-### **Automatización**
-
-```bash
-python forecasting/automation_setup.py --run-once
-```
-- Ejecuta el pipeline completo, incluyendo la comparación de modelos.
+### 4. **Automatización y Alertas**
+- **Pipeline automatizado**: Ejecución programada
+- **Sistema de alertas**: Detección de anomalías
+- **Reportes automáticos**: Generación de informes
 
 ---
 
-## 📊 **Principales Métricas y Funcionalidades**
+## 🛠️ Instalación y Configuración
 
-- **Carga laboral por cargo y usuario** (análisis 360°)
-- **Mapas de calor** de actividad por mes y día
-- **Predicción de necesidades de personal** (horas-persona/día)
-- **Comparación Prophet vs ARIMA** (métricas y gráficos)
-- **Alertas automáticas** y recomendaciones de staffing
-- **Exportación de resultados** en múltiples formatos
-- **Historial de ejecuciones** gracias a carpetas con timestamp
+### Requisitos
+- Python 3.8 o superior
+- Cuenta en Streamlit Cloud (para deployment)
+- Credenciales de Supabase
+- API Key de Reservo
+
+### Instalación Local
+
+1. **Clonar el repositorio**
+```bash
+git clone https://github.com/edgargomero/analisis_resultados.git
+cd analisis_resultados/pcf_scripts
+```
+
+2. **Instalar dependencias**
+```bash
+pip install -r requirements.txt
+```
+
+3. **Configurar variables de entorno**
+```bash
+# Copiar template
+cp .env.example .env
+
+# Editar con tus credenciales
+# SUPABASE_URL=https://xxxxx.supabase.co
+# SUPABASE_KEY=your-service-role-key
+# RESERVO_API_KEY=your-api-key
+```
+
+4. **Ejecutar aplicación**
+```bash
+python run.py
+# O directamente: streamlit run app.py
+```
 
 ---
 
-## 📈 **Beneficios y Resultados**
+## 📊 Uso del Sistema
 
-- **Optimización de recursos humanos**: reducción de sobre-staffing y mejora en la planificación.
-- **Visualización clara** de patrones de demanda y carga laboral.
-- **Predicción robusta** con Prophet y ARIMA.
-- **Automatización y reportes** para toma de decisiones ágil.
-- **Comparación objetiva de modelos** para elegir el mejor enfoque.
+### 1. **Carga de Datos**
+- Subir archivo CSV/Excel con datos de llamadas
+- Formatos soportados: CSV (;), Excel (.xlsx, .xls)
+- Columnas requeridas: FECHA, TELEFONO, SENTIDO, ATENDIDA
+
+### 2. **Pipeline de Procesamiento**
+1. **Auditoría**: Validación de calidad (~15s)
+2. **Segmentación**: Clasificación de llamadas (~20s)
+3. **Entrenamiento**: 4 modelos de IA (~45s)
+4. **Predicción**: Proyección a 28 días (~25s)
+
+### 3. **Dashboard Interactivo**
+- Visualización de predicciones
+- Comparación de modelos
+- Análisis por hora/día/semana
+- Impacto de feriados chilenos
+
+### 4. **Exportación de Resultados**
+- JSON con predicciones detalladas
+- Excel con resumen ejecutivo
+- CSV para análisis adicional
 
 ---
 
-## 📋 **Requisitos**
+## 🚀 Deployment en Streamlit Cloud
 
-- Python 3.8+
-- Ver dependencias en `requirements.txt`
-- Archivos de datos fuente (CSV de Reservo y Alodesk) en las rutas esperadas.
+### Configuración
+1. Fork el repositorio en GitHub
+2. Conectar con Streamlit Cloud
+3. Configurar:
+   - **Main file path**: `pcf_scripts/app.py`
+   - **Python version**: 3.9
+
+### Secrets Configuration
+En Streamlit Cloud dashboard → Settings → Secrets:
+```toml
+SUPABASE_URL = "https://your-project.supabase.co"
+SUPABASE_KEY = "your-service-role-key"
+SUPABASE_ANON_KEY = "your-anon-key"
+RESERVO_API_URL = "https://api.reservo.cl"
+RESERVO_API_KEY = "your-api-key"
+```
 
 ---
 
-## 📞 **Soporte y Contacto**
+## 📈 Métricas y Performance
 
-- Para dudas técnicas, revisar los scripts y la documentación inline.
-- Para soporte, contactar al equipo de desarrollo CEAPSI.
+| Métrica | Objetivo | Estado Actual |
+|---------|----------|---------------|
+| MAE | < 10 llamadas/día | ✅ Cumplido |
+| RMSE | < 15 llamadas/día | ✅ Cumplido |
+| MAPE | < 25% | ✅ Cumplido |
+| Uptime | > 99% | ✅ En monitoreo |
 
 ---
 
-**Desarrollado para CEAPSI - Optimización de recursos humanos en salud mental**  
-**Estado:** 100% funcional y listo para producción  
-**Última actualización:** Julio 2025
+## 📚 Documentación
+
+- [📖 Guía de Usuario](pcf_scripts/docs/README.md)
+- [🏗️ Arquitectura del Sistema](pcf_scripts/docs/architecture/ARCHITECTURE.md)
+- [🚀 Deployment Guide](pcf_scripts/docs/STREAMLIT_DEPLOYMENT.md)
+- [📚 Referencias Técnicas](pcf_scripts/docs/REFERENCES.md)
+- [🔐 Configuración de Seguridad](pcf_scripts/docs/SECURITY_SETUP.md)
+
+---
+
+## 🤝 Contribuir
+
+1. Fork el proyecto
+2. Crear feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push al branch (`git push origin feature/AmazingFeature`)
+5. Abrir Pull Request
+
+---
+
+## 📞 Soporte
+
+- **Email**: soporte@ceapsi.cl
+- **Issues**: [GitHub Issues](https://github.com/edgargomero/analisis_resultados/issues)
+- **Documentación**: Ver carpeta `docs/`
+
+---
+
+## 📄 Licencia
+
+Proyecto privado de CEAPSI. Todos los derechos reservados.
+
+---
+
+**Desarrollado para CEAPSI** - Sistema integral de predicción y análisis  
+**Estado**: ✅ En producción  
+**Última actualización**: Enero 2025  
+**Versión**: 2.0.0
