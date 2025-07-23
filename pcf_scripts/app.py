@@ -298,6 +298,21 @@ class PipelineProcessor:
         """PASO 2: Segmentación de llamadas"""
         st.info("🔀 Ejecutando segmentación de llamadas...")
         
+        # CRÍTICO: Limpiar archivos cache de ejecuciones anteriores para evitar data leakage
+        archivos_cache = [
+            'datos_prophet_entrante.csv',
+            'datos_prophet_saliente.csv'
+        ]
+        for archivo in archivos_cache:
+            if os.path.exists(archivo):
+                os.remove(archivo)
+                st.info(f"🗑️ Limpiando cache anterior: {archivo}")
+        
+        # Establecer fecha límite basada en datos subidos
+        fecha_corte_datos = self.df_original['FECHA'].max()
+        st.session_state.fecha_corte_datos = fecha_corte_datos
+        st.info(f"📅 **Fecha límite de datos subidos**: {fecha_corte_datos.date()}")
+        
         try:
             # Segmentar por tipo de llamada
             if 'SENTIDO' in self.df_original.columns:
@@ -323,12 +338,18 @@ class PipelineProcessor:
                 df_diario['ds'] = pd.to_datetime(df_diario['ds'])
                 df_diario = df_diario.sort_values('ds').reset_index(drop=True)
                 
-                # Completar días faltantes - usar rango completo de datos
+                # CRÍTICO: Filtrar dataset de entrenamiento por fecha límite para evitar data leakage
+                if hasattr(st.session_state, 'fecha_corte_datos') and st.session_state.fecha_corte_datos:
+                    fecha_limite = st.session_state.fecha_corte_datos.normalize()
+                    df_diario = df_diario[df_diario['ds'] <= fecha_limite]
+                    st.info(f"🔐 **{tipo.capitalize()}**: Datos filtrados hasta {fecha_limite.date()}")
+                
+                # Completar días faltantes - usar rango FILTRADO de datos
                 fecha_min = df_diario['ds'].min()
                 fecha_max = df_diario['ds'].max()
                 
                 # Mostrar información del rango detectado
-                st.info(f"📅 **{tipo.capitalize()}**: Rango de datos detectado {fecha_min.date()} → {fecha_max.date()}")
+                st.info(f"📅 **{tipo.capitalize()}**: Rango final de entrenamiento {fecha_min.date()} → {fecha_max.date()}")
                 
                 todas_fechas = pd.date_range(start=fecha_min, end=fecha_max, freq='D')
                 todas_fechas = todas_fechas[todas_fechas.dayofweek < 5]  # Solo días laborales
@@ -480,22 +501,21 @@ class PipelineProcessor:
                 dataset = self.resultados['segmentacion']['datasets'][tipo]
                 modelos_info = self.resultados['modelos'][tipo]
                 
-                # Generar fechas futuras (próximos 28 días laborales)
-                ultima_fecha = dataset['ds'].max()
+                # CRÍTICO: Usar fecha límite de datos subidos para evitar data leakage
+                fecha_corte_subida = st.session_state.get('fecha_corte_datos')
+                ultima_fecha_dataset = dataset['ds'].max()
                 
-                # VALIDACIÓN: Alertar sobre datos muy futuros pero permitir análisis retrospectivo
-                fecha_hoy = pd.to_datetime('today').normalize()
-                fecha_limite_razonable = fecha_hoy + pd.DateOffset(years=2)  # Permitir hasta 2 años futuros
+                # Usar la menor entre fecha de corte y última fecha del dataset
+                if fecha_corte_subida:
+                    ultima_fecha = min(fecha_corte_subida.normalize(), ultima_fecha_dataset)
+                    st.info(f"🔐 **Control Data Leakage**: Usando fecha límite {ultima_fecha.date()}")
+                    st.info(f"    • Datos subidos hasta: {fecha_corte_subida.date()}")
+                    st.info(f"    • Dataset procesado hasta: {ultima_fecha_dataset.date()}")
+                else:
+                    ultima_fecha = ultima_fecha_dataset
+                    st.warning("⚠️ No se encontró fecha límite de datos subidos, usando máxima del dataset")
                 
-                if ultima_fecha > fecha_limite_razonable:
-                    st.error(f"🚨 **DATOS EXCESIVAMENTE FUTUROS** 🚨")
-                    st.error(f"Última fecha: {ultima_fecha.date()}, límite razonable: {fecha_limite_razonable.date()}")
-                    st.error("Verifique que las fechas del dataset sean correctas.")
-                    return False
-                elif ultima_fecha > fecha_hoy:
-                    st.info(f"ℹ️ **Análisis Retrospectivo**: Datos incluyen fechas futuras hasta {ultima_fecha.date()}")
-                    st.info("Procesando dataset completo para análisis histórico y validación.")
-                
+                # Generar fechas futuras REALES (próximos 28 días laborales desde la fecha límite)
                 fechas_futuras = []
                 fecha_actual = ultima_fecha + timedelta(days=1)
                 
