@@ -7,6 +7,15 @@ from datetime import datetime
 import requests
 from typing import Dict, List, Optional, Union
 import logging
+import time
+
+# Importar sistema de auditoría
+try:
+    from audit_manager import SupabaseAuditManager, audit_function
+    AUDIT_AVAILABLE = True
+except ImportError:
+    AUDIT_AVAILABLE = False
+    print("⚠️ Sistema de auditoría no disponible")
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -22,20 +31,59 @@ class PreparadorDatos:
         
     def procesar_csv(self, archivo_cargado) -> pd.DataFrame:
         """Procesa archivo CSV cargado"""
+        start_time = time.time()
+        
         try:
             # Intentar diferentes encodings
             encodings = ['utf-8', 'latin-1', 'cp1252']
+            df = None
+            encoding_usado = None
+            
             for encoding in encodings:
                 try:
                     df = pd.read_csv(archivo_cargado, encoding=encoding)
+                    encoding_usado = encoding
                     logger.info(f"CSV procesado exitosamente con encoding {encoding}")
-                    return df
+                    break
                 except UnicodeDecodeError:
                     continue
             
-            raise Exception("No se pudo decodificar el archivo CSV")
+            if df is None:
+                raise Exception("No se pudo decodificar el archivo CSV")
+            
+            # Auditar procesamiento exitoso
+            if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                processing_time = time.time() - start_time
+                st.session_state.audit_manager.log_activity(
+                    activity_type="data_processing",
+                    module_name="preparacion_datos",
+                    activity_description=f"CSV procesado: {archivo_cargado.name}",
+                    activity_details={
+                        "file_name": archivo_cargado.name,
+                        "encoding_used": encoding_usado,
+                        "records_processed": len(df),
+                        "columns_detected": len(df.columns),
+                        "processing_time_seconds": processing_time
+                    }
+                )
+            
+            return df
             
         except Exception as e:
+            # Auditar error
+            if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                processing_time = time.time() - start_time
+                st.session_state.audit_manager.log_activity(
+                    activity_type="data_processing_error",
+                    module_name="preparacion_datos",
+                    activity_description=f"Error procesando CSV: {archivo_cargado.name}",
+                    activity_details={
+                        "file_name": archivo_cargado.name,
+                        "error_message": str(e),
+                        "processing_time_seconds": processing_time
+                    }
+                )
+            
             logger.error(f"Error procesando CSV: {str(e)}")
             raise
     
@@ -240,44 +288,115 @@ class IntegradorReservo:
         if api_key:
             self.headers['Authorization'] = f'Bearer {api_key}'
     
-    def test_conexion(self) -> bool:
+    def test_conexion(self) -> tuple[bool, str]:
         """Prueba la conexión con la API"""
+        if not self.api_key:
+            return False, "API Key no configurada"
+        
         try:
             response = requests.get(
                 f"{self.api_url}/api/schema/",
                 headers=self.headers,
                 timeout=10
             )
-            return response.status_code == 200
+            
+            if response.status_code == 200:
+                return True, "Conexión exitosa"
+            elif response.status_code == 401:
+                return False, "API Key inválida o expirada"
+            elif response.status_code == 403:
+                return False, "Sin permisos para acceder a la API"
+            elif response.status_code == 404:
+                return False, "Endpoint no encontrado - verifica la URL"
+            else:
+                return False, f"Error HTTP {response.status_code}: {response.text[:100]}"
+                
+        except requests.exceptions.Timeout:
+            return False, "Timeout - servidor no responde"
+        except requests.exceptions.ConnectionError:
+            return False, "Error de conexión - verifica la URL de la API"
         except Exception as e:
             logger.error(f"Error conectando con Reservo: {str(e)}")
-            return False
+            return False, f"Error inesperado: {str(e)}"
     
     def obtener_citas(self, fecha_inicio: str, fecha_fin: str) -> Optional[pd.DataFrame]:
         """Obtiene las citas en un rango de fechas"""
+        start_time = time.time()
+        endpoint = f"{self.api_url}/citas"
+        params = {'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin}
+        
         try:
             # Este endpoint es un ejemplo, necesitarás ajustarlo según la documentación real
             response = requests.get(
-                f"{self.api_url}/citas",
+                endpoint,
                 headers=self.headers,
-                params={
-                    'fecha_inicio': fecha_inicio,
-                    'fecha_fin': fecha_fin
-                },
+                params=params,
                 timeout=30
             )
             
+            response_time_ms = int((time.time() - start_time) * 1000)
+            
             if response.status_code == 200:
                 data = response.json()
+                df = None
+                records_count = 0
+                
                 if isinstance(data, list):
-                    return pd.DataFrame(data)
+                    df = pd.DataFrame(data)
+                    records_count = len(df)
                 elif isinstance(data, dict) and 'data' in data:
-                    return pd.DataFrame(data['data'])
+                    df = pd.DataFrame(data['data'])
+                    records_count = len(df)
+                
+                # Auditar llamada exitosa
+                if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                    st.session_state.audit_manager.log_api_call(
+                        api_provider="reservo",
+                        endpoint="/citas",
+                        method="GET",
+                        request_parameters=params,
+                        response_status=response.status_code,
+                        response_time_ms=response_time_ms,
+                        records_retrieved=records_count,
+                        success=True
+                    )
+                
+                return df
             else:
+                # Auditar error de API
+                if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                    st.session_state.audit_manager.log_api_call(
+                        api_provider="reservo",
+                        endpoint="/citas",
+                        method="GET",
+                        request_parameters=params,
+                        response_status=response.status_code,
+                        response_time_ms=response_time_ms,
+                        records_retrieved=0,
+                        success=False,
+                        error_message=f"HTTP {response.status_code}: {response.text[:200]}"
+                    )
+                
                 logger.error(f"Error en API Reservo: {response.status_code}")
                 return None
                 
         except Exception as e:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Auditar excepción
+            if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                st.session_state.audit_manager.log_api_call(
+                    api_provider="reservo",
+                    endpoint="/citas",
+                    method="GET",
+                    request_parameters=params,
+                    response_status=0,
+                    response_time_ms=response_time_ms,
+                    records_retrieved=0,
+                    success=False,
+                    error_message=str(e)
+                )
+            
             logger.error(f"Error obteniendo citas de Reservo: {str(e)}")
             return None
     
@@ -350,6 +469,20 @@ def mostrar_preparacion_datos():
                         return
                 
                 st.success(f"✅ Archivo procesado: {len(df)} registros encontrados")
+                
+                # Auditar subida de archivo
+                if AUDIT_AVAILABLE and hasattr(st.session_state, 'audit_manager'):
+                    st.session_state.audit_manager.log_file_upload(
+                        file_name=nombre_archivo,
+                        file_type=extension,
+                        file_size_bytes=archivo_cargado.size,
+                        data_type=tipo_datos.lower(),
+                        records_count=len(df),
+                        columns_detected=list(df.columns),
+                        validation_status="pending",
+                        validation_details={"processed_successfully": True},
+                        storage_path=f"temp_processing/{nombre_archivo}"
+                    )
                 
                 # Mostrar vista previa
                 with st.expander("Vista previa de datos", expanded=True):
@@ -543,27 +676,63 @@ def mostrar_preparacion_datos():
     with tab_api:
         st.subheader("🔌 Integración con API Reservo")
         
-        # Configuración de API
+        # Configuración de API usando secrets
         with st.expander("⚙️ Configuración de API", expanded=True):
-            api_key = st.text_input(
-                "API Key de Reservo",
-                type="password",
-                help="Ingresa tu API Key de Reservo para conectarte"
-            )
+            # Intentar obtener API key desde secrets
+            api_key = None
+            api_url = "https://reservo.cl/APIpublica/v2"
+            
+            try:
+                # Prioridad 1: Streamlit secrets
+                if hasattr(st, 'secrets') and 'reservo' in st.secrets:
+                    api_key = st.secrets["reservo"]["API_KEY"]
+                    api_url = st.secrets["reservo"].get("API_URL", api_url)
+                    if api_key:
+                        st.success("✅ API Key de Reservo cargada desde secrets")
+                    else:
+                        st.warning("⚠️ API Key de Reservo no configurada en secrets")
+                # Prioridad 2: Variables de entorno
+                elif os.getenv('RESERVO_API_KEY'):
+                    api_key = os.getenv('RESERVO_API_KEY')
+                    api_url = os.getenv('RESERVO_API_URL', api_url)
+                    st.success("✅ API Key de Reservo cargada desde variables de entorno")
+                else:
+                    st.info("💡 Configura la API key en Streamlit secrets para usar la integración")
+            except Exception as e:
+                st.error(f"❌ Error cargando configuración: {str(e)}")
+            
+            # Fallback: permitir ingreso manual solo si no hay configuración
+            if not api_key:
+                st.warning("🔑 API Key no configurada automáticamente")
+                api_key = st.text_input(
+                    "API Key de Reservo (temporal)",
+                    type="password",
+                    help="Ingresa tu API Key temporalmente. Recomendado: configurar en secrets"
+                )
+                if api_key:
+                    st.info("⚠️ **Recomendación**: Configura la API key en secrets para mayor seguridad")
             
             if api_key:
-                integrador = IntegradorReservo(api_key)
+                integrador = IntegradorReservo(api_key, api_url)
                 
                 col1, col2 = st.columns([1, 3])
                 with col1:
                     if st.button("Probar Conexión"):
                         with st.spinner("Probando conexión..."):
-                            if integrador.test_conexion():
-                                st.success("✅ Conexión exitosa")
+                            conectado, mensaje = integrador.test_conexion()
+                            if conectado:
+                                st.success(f"✅ {mensaje}")
                             else:
-                                st.error("❌ No se pudo conectar. Verifica tu API Key")
+                                st.error(f"❌ {mensaje}")
+                
+                with col2:
+                    st.info("🔗 **Endpoint**: " + api_url)
         
         if api_key:
+            # Crear integrador una vez que tengamos la API key
+            if 'integrador' not in locals():
+                integrador = IntegradorReservo(api_key, api_url)
+            
             st.subheader("📅 Obtener Datos de Citas")
             
             col1, col2 = st.columns(2)

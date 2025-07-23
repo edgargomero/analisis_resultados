@@ -72,6 +72,20 @@ except ImportError as e:
     HYPEROPT_AVAILABLE = False
 
 try:
+    from modulo_estado_reservo import mostrar_estado_reservo
+    ESTADO_RESERVO_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar modulo_estado_reservo: {e}")
+    ESTADO_RESERVO_AVAILABLE = False
+
+try:
+    from setup_audit_integration import initialize_audit_system, show_audit_status
+    AUDIT_INTEGRATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"No se pudo importar setup_audit_integration: {e}")
+    AUDIT_INTEGRATION_AVAILABLE = False
+
+try:
     from feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
     try:
         from feriados_chilenos import mostrar_analisis_cargo_feriados
@@ -1305,6 +1319,15 @@ def main():
         # Mostrar información del usuario autenticado
         auth_manager.sidebar_user_info()
         
+        # Inicializar sistema de auditoría
+        if AUDIT_INTEGRATION_AVAILABLE:
+            try:
+                initialize_audit_system()
+                # Mostrar estado de auditoría en sidebar
+                show_audit_status()
+            except Exception as e:
+                logger.warning(f"Error inicializando sistema de auditoría: {e}")
+        
         # Mensaje de seguridad en desarrollo
         if os.getenv('ENVIRONMENT') == 'development':
             with st.sidebar:
@@ -1335,6 +1358,7 @@ def main():
         opciones_navegacion = [
             "📊 Dashboard", 
             "🔧 Preparación de Datos",
+            "🔗 Estado Reservo",
             "🇨🇱 Feriados Chilenos",
             "🎯 Optimización ML", 
             "👥 Análisis de Usuarios", 
@@ -1409,6 +1433,12 @@ def main():
             mostrar_preparacion_datos()
         else:
             st.error("⚠️ Módulo de preparación de datos no disponible")
+    elif pagina == "🔗 Estado Reservo":
+        if ESTADO_RESERVO_AVAILABLE:
+            mostrar_estado_reservo()
+        else:
+            st.error("⚠️ Módulo de estado de Reservo no disponible")
+            st.info("Verifica que los archivos modulo_estado_reservo.py y sus dependencias estén instalados")
     elif pagina == "🇨🇱 Feriados Chilenos":
         if FERIADOS_AVAILABLE:
             # Crear tabs para diferentes análisis de feriados
