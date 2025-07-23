@@ -16,43 +16,65 @@ Sistema completo de predicción de llamadas para call center usando inteligencia
 - **⚙️ Pipeline con Progreso**: Seguimiento visual del estado de ejecución
 - **🌐 Interfaz en Español**: Totalmente localizada con semanas iniciando en lunes
 
-## 🚀 Instalación y Configuración
+## 🚀 Despliegue y Configuración
 
-### Prerrequisitos
+### 🌐 Despliegue en Streamlit Cloud
 
-- Python 3.8 o superior
-- pip (gestor de paquetes de Python)
+Este proyecto está **desplegado en Streamlit Cloud** con las siguientes características:
 
-### Instalación
+- **🗄️ Base de Datos**: Supabase Cloud
+- **🔐 Variables de Entorno**: Configuradas en Streamlit Secrets
+- **🔗 API Integration**: Conexión con Reservo API para datos en tiempo real
+- **📊 Dashboard**: Acceso web directo sin instalación local
 
-1. **Clonar o descargar el proyecto**
-   ```bash
-   # Si tienes git instalado
-   git clone <repository-url>
-   cd pcf_scripts
-   ```
+### Configuración de Streamlit Secrets
 
-2. **Instalar dependencias**
+Las variables de entorno se configuran en Streamlit Secrets (`.streamlit/secrets.toml`):
+
+```toml
+# Supabase Configuration
+SUPABASE_URL = "https://your-project-id.supabase.co"
+SUPABASE_KEY = "your-supabase-service-role-key"
+SUPABASE_ANON_KEY = "your-supabase-anon-key"
+
+# Reservo API Integration
+RESERVO_API_URL = "https://api.reservo.cl"
+RESERVO_API_KEY = "your-reservo-api-key"
+RESERVO_CLIENT_ID = "your-client-id"
+
+# Application Settings
+APP_NAME = "CEAPSI_PCF"
+LOG_LEVEL = "INFO"
+```
+
+### 🔗 Conexión con Reservo API
+
+El sistema integra datos directamente desde Reservo API:
+
+- **📞 Datos de Llamadas**: Sincronización automática cada 15 minutos
+- **👥 Información de Agentes**: Estado y disponibilidad en tiempo real
+- **📊 Métricas de Performance**: KPIs actualizados automáticamente
+- **🔄 Estado de Conexión**: Monitor visual en el frontend
+
+### Instalación Local (Desarrollo)
+
+Si necesitas ejecutar localmente:
+
+1. **Instalar dependencias**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **¡Listo para usar!**
-   
-   La aplicación permite subir archivos manualmente. No necesitas configurar rutas específicas.
-   
-   **Formatos soportados:**
-   - CSV (con separador punto y coma)
-   - Excel (.xlsx, .xls)
-   
-   **Archivo de ejemplo incluido:** `ejemplo_datos_llamadas.csv`
+2. **Configurar variables de entorno**
+   ```bash
+   # Crear archivo .env con las credenciales de Supabase y Reservo
+   cp .env.example .env
+   ```
 
-### Ejecución
-
-**Modo Dashboard Interactivo (Recomendado)**
-```bash
-streamlit run app.py
-```
+3. **Ejecutar aplicación**
+   ```bash
+   streamlit run app.py
+   ```
 
 **Módulos Individuales**
 ```bash
@@ -165,7 +187,42 @@ FECHA;TELEFONO;SENTIDO;ATENDIDA;STATUS
 - **Mapeo inteligente**: Detección automática de formatos de datos
 - **Integración API**: Conectividad con Reservo y otras fuentes
 
-### 8. ⚙️ Automatización con Progreso
+### 8. 🔗 Monitor de Conexión Reservo API (NUEVO)
+
+El frontend incluye un **monitor visual en tiempo real** que muestra:
+
+#### 🟢 Estado de Conexión
+- **Indicador visual**: Semáforo de estado (Verde/Amarillo/Rojo)
+- **Última sincronización**: Timestamp de la última actualización exitosa
+- **Latencia**: Tiempo de respuesta de la API en milisegundos
+- **Registros procesados**: Contador de llamadas sincronizadas
+
+#### 📊 Panel de Control API
+```
+🔄 Estado Reservo API
+├── 🟢 CONECTADO | Última sync: 14:25:30
+├── ⏱️ Latencia: 245ms | Próxima sync: 14:40:00
+├── 📞 Llamadas procesadas: 1,247 hoy
+├── 👥 Agentes activos: 15/20
+└── 📈 Tasa de éxito: 98.5%
+```
+
+#### 🚨 Alertas de Conexión
+- **Alerta amarilla**: Latencia > 1000ms o errores < 5%
+- **Alerta roja**: Sin conexión > 30 minutos
+- **Notificación**: Pop-up automático en caso de fallas
+- **Reintentos**: Lógica automática de reconexión
+
+#### 📋 Log de Actividad API
+El sidebar incluye un log en tiempo real:
+```
+[14:25:30] ✅ Sync exitosa - 45 nuevas llamadas
+[14:25:15] ⚠️ Latencia alta detectada (1.2s)
+[14:10:30] ✅ Sync exitosa - 38 nuevas llamadas
+[14:09:45] 🔄 Reconectando a Reservo API...
+```
+
+### 9. ⚙️ Automatización con Progreso
 - Pipeline completo automatizado con **indicadores visuales de progreso**
 - **Barra de estado**: Seguimiento en tiempo real del proceso
 - **Estimación de tiempo**: Tiempo restante para completar
@@ -259,10 +316,11 @@ Para soporte técnico o preguntas sobre el sistema:
 - ✅ Sistema de alertas avanzado
 
 ### Próximas Versiones
-- 🔄 Integración con API de Alodesk en tiempo real
+- ✅ Integración con Reservo API en tiempo real (IMPLEMENTADO)
 - 🔄 Modelos de deep learning (LSTM, Transformer)
 - 🔄 Predicción por agente individual
 - 🔄 Optimización automática de turnos
+- 🔄 Dashboard móvil para supervisores
 
 ## 📄 Licencia
 
