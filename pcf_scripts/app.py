@@ -21,11 +21,11 @@ import plotly.graph_objects as go
 
 # Fix para imports locales
 current_dir = Path(__file__).parent.absolute()
-project_root = current_dir.parent
+src_dir = current_dir / "src"
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
 
 # Suprimir warnings menores
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
