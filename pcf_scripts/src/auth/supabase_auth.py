@@ -20,8 +20,14 @@ class SupabaseAuthManager:
         """
         Inicializa el cliente Supabase
         """
-        self.supabase_url = os.getenv('SUPABASE_URL')
-        self.supabase_key = os.getenv('SUPABASE_KEY')
+        # Intentar obtener de Streamlit secrets primero, luego de env vars
+        if hasattr(st, 'secrets') and 'SUPABASE_URL' in st.secrets:
+            self.supabase_url = st.secrets['SUPABASE_URL']
+            self.supabase_key = st.secrets['SUPABASE_KEY']
+        else:
+            self.supabase_url = os.getenv('SUPABASE_URL')
+            self.supabase_key = os.getenv('SUPABASE_KEY')
+        
         self.supabase: Client = None
         
         if self.supabase_url and self.supabase_key:

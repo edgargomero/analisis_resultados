@@ -40,12 +40,19 @@ class EstadoIntegracionReservo:
     def _initialize_config(self):
         """Inicializa la configuración de Reservo"""
         try:
-            # Prioridad 1: Streamlit secrets
-            if hasattr(st, 'secrets') and 'reservo' in st.secrets:
-                self.api_key = st.secrets["reservo"].get("API_KEY")
-                self.api_url = st.secrets["reservo"].get("API_URL", self.api_url)
+            # Prioridad 1: Streamlit secrets (formato plano)
+            if hasattr(st, 'secrets'):
+                # Buscar en formato plano primero
+                if 'RESERVO_API_KEY' in st.secrets:
+                    self.api_key = st.secrets['RESERVO_API_KEY']
+                    self.api_url = st.secrets.get('RESERVO_API_URL', self.api_url)
+                # Luego buscar en formato anidado por compatibilidad
+                elif 'reservo' in st.secrets:
+                    self.api_key = st.secrets["reservo"].get("API_KEY")
+                    self.api_url = st.secrets["reservo"].get("API_URL", self.api_url)
+            
             # Prioridad 2: Variables de entorno
-            elif os.getenv('RESERVO_API_KEY'):
+            if not self.api_key and os.getenv('RESERVO_API_KEY'):
                 self.api_key = os.getenv('RESERVO_API_KEY')
                 self.api_url = os.getenv('RESERVO_API_URL', self.api_url)
             

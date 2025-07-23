@@ -44,8 +44,10 @@ logger = logging.getLogger('CEAPSI_APP')
 # Importar autenticación Supabase EXCLUSIVAMENTE
 try:
     from auth.supabase_auth import SupabaseAuthManager
-    from dotenv import load_dotenv
-    load_dotenv()  # Cargar variables de entorno
+    # Solo cargar dotenv si no estamos en Streamlit Cloud
+    if not hasattr(st, 'secrets') or len(st.secrets) == 0:
+        from dotenv import load_dotenv
+        load_dotenv()  # Cargar variables de entorno solo en desarrollo
     SUPABASE_AUTH_AVAILABLE = True
     logger.info("Sistema de autenticación Supabase cargado")
 except ImportError as e:
