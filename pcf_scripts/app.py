@@ -1140,196 +1140,25 @@ def mostrar_progreso_pipeline():
             with col3:
                 st.caption(paso['tiempo_estimado'])
     
-    # Información adicional
+    # Información adicional con botón funcional
     if progreso == 1.0:
         st.success("🚀 **¡Sistema listo!** Navega al Dashboard para ver predicciones y análisis detallados.")
     elif st.session_state.get('datos_cargados', False):
-        st.info("📂 **Datos cargados correctamente.** Haz clic en 'Ejecutar Pipeline' para comenzar el procesamiento.")
+        st.markdown("---")
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.info("📂 **Datos cargados correctamente.** Ejecuta el pipeline para comenzar el procesamiento.")
+        with col2:
+            if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True, key="progreso_pipeline_btn"):
+                processor = PipelineProcessor(st.session_state.archivo_datos)
+                if processor.ejecutar_pipeline_completo():
+                    st.success("🎉 Pipeline completado exitosamente!")
+                    st.rerun()
     else:
         st.warning("📁 **Comienza aquí:** Sube un archivo CSV o Excel con tus datos de llamadas usando el panel lateral.")
     
     return completados, len(pasos)
 
-def mostrar_navegacion_contextual():
-    """Navegación contextual basada en el estado del sistema"""
-    
-    datos_cargados = st.session_state.get('datos_cargados', False)
-    pipeline_completado = st.session_state.get('pipeline_completado', False)
-    
-    st.markdown("### 🧭 ¿Qué hacer ahora?")
-    
-    if not datos_cargados:
-        st.markdown("""
-        <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; border-left: 5px solid #2196F3;">
-            <h4 style="color: #1976D2; margin: 0 0 10px 0;">👆 Próximo paso: Cargar datos</h4>
-            <div style="margin: 0; color: #424242;">Sube un archivo CSV o Excel con tus datos de llamadas usando el panel lateral</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        with st.expander("💡 ¿Necesitas ayuda preparando datos?"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("""
-                **🔧 Preparación de Datos**
-                - Valida y limpia tus archivos
-                - Conecta con API Reservo
-                - Verifica formato correcto
-                """)
-            
-            with col2:
-                if st.button("Ir a Preparación de Datos", use_container_width=True, key="ir_preparacion_btn"):
-                    st.session_state.navegacion_objetivo = "🔧 Preparación de Datos"
-                    st.rerun()
-    
-    elif not pipeline_completado:
-        st.markdown("""
-        <div style="background: #fff3e0; padding: 20px; border-radius: 10px; border-left: 5px solid #FF9800;">
-            <h4 style="color: #F57C00; margin: 0 0 10px 0;">⚙️ Próximo paso: Ejecutar pipeline</h4>
-            <div style="margin: 0; color: #424242;">Los datos están cargados. Ahora ejecuta el pipeline para procesarlos y entrenar los modelos.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🚀 Ejecutar Pipeline Completo", type="primary", use_container_width=True, key="ejecutar_pipeline_btn"):
-                st.session_state.ejecutar_pipeline = True
-                st.info("🚀 Ejecutando pipeline... (En implementación)")
-        
-        with col2:
-            if st.button("📋 Ver datos cargados", use_container_width=True, key="ver_datos_btn"):
-                st.session_state.mostrar_preview = True
-                st.info("📋 Mostrando preview de datos...")
-    
-    else:
-        st.markdown("""
-        <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50;">
-            <h4 style="color: #2E7D32; margin: 0 0 10px 0;">🎉 ¡Sistema listo!</h4>
-            <div style="margin: 0; color: #424242;">Todos los modelos están entrenados. Explora tus resultados y predicciones.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("📊 Ver Dashboard", use_container_width=True, type="primary", key="ir_dashboard_btn"):
-                st.session_state.navegacion_objetivo = "📊 Dashboard"
-                st.rerun()
-        
-        with col2:
-            if st.button("🎯 Optimizar ML", use_container_width=True, key="ir_optimizacion_btn"):
-                st.session_state.navegacion_objetivo = "🎯 Optimización ML"
-                st.rerun()
-        
-        with col3:
-            if st.button("📊 Dashboard", use_container_width=True, key="ir_dashboard_btn"):
-                st.session_state.navegacion_objetivo = "📊 Dashboard"
-                st.rerun()
-
-def mostrar_pagina_inicio():
-    """Página principal con UX mejorada"""
-    
-    # Header principal con gradiente
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 20px;
-        text-align: center;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    ">
-        <h1 style="margin: 0; font-size: 28px; font-weight: 600;">📞 CEAPSI</h1>
-        <div style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">Sistema de Predicción Inteligente de Llamadas</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Mostrar progreso del pipeline
-    mostrar_progreso_pipeline()
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Métricas principales en cards mejoradas
-    st.markdown("### 📊 Estado del Sistema")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        estado_datos = "Cargados" if st.session_state.datos_cargados else "Pendientes"
-        color_datos = "#4CAF50" if st.session_state.datos_cargados else "#FF9800"
-        mostrar_card_metrica_mejorada(
-            "Datos", estado_datos, 
-            "Estado de los datos", "📁", 
-            color_datos
-        )
-    
-    with col2:
-        estado_pipeline = "Completado" if st.session_state.pipeline_completado else "Pendiente"
-        color_pipeline = "#4CAF50" if st.session_state.pipeline_completado else "#FF9800"
-        mostrar_card_metrica_mejorada(
-            "Pipeline", estado_pipeline, 
-            "Procesamiento IA", "🚀", 
-            color_pipeline
-        )
-    
-    with col3:
-        mostrar_card_metrica_mejorada(
-            "Modelos IA", "4", 
-            "ARIMA, Prophet, RF, GB", "🤖", 
-            "#9C27B0"
-        )
-    
-    with col4:
-        estado_dash = "Disponible" if DASHBOARD_AVAILABLE else "Error"
-        color_dash = "#4CAF50" if DASHBOARD_AVAILABLE else "#F44336"
-        mostrar_card_metrica_mejorada(
-            "Dashboard", estado_dash, 
-            "Visualización", "📊", 
-            color_dash
-        )
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Navegación contextual
-    mostrar_navegacion_contextual()
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Resumen de resultados si están disponibles
-    if st.session_state.pipeline_completado and st.session_state.get('resultados_pipeline'):
-        st.markdown("### 📈 Resumen de Resultados")
-        
-        resultados = st.session_state.resultados_pipeline
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if 'auditoria' in resultados:
-                total_registros = resultados['auditoria']['total_registros']
-                mostrar_card_metrica_mejorada(
-                    "Registros", f"{total_registros:,}", 
-                    "Datos procesados", "📋", 
-                    "#2196F3"
-                )
-        
-        with col2:
-            if 'modelos' in resultados:
-                tipos_entrenados = len(resultados['modelos'])
-                mostrar_card_metrica_mejorada(
-                    "Modelos", str(tipos_entrenados), 
-                    "Algoritmos entrenados", "🎯", 
-                    "#FF5722"
-                )
-        
-        with col3:
-            if 'predicciones' in resultados:
-                pred_total = sum(len(p) for p in resultados['predicciones'].values())
-                mostrar_card_metrica_mejorada(
-                    "Predicciones", str(pred_total), 
-                    "Pronósticos generados", "🔮", 
-                    "#00BCD4"
-                )
 
 def mostrar_ayuda_contextual():
     """Sistema de ayuda contextual en sidebar"""
@@ -1338,25 +1167,16 @@ def mostrar_ayuda_contextual():
         st.markdown("### 💡 Ayuda Contextual")
         
         # Ayuda basada en la página actual
-        pagina_actual = st.session_state.get('pagina_activa', '🏠 Inicio')
+        pagina_actual = st.session_state.get('pagina_activa', '📊 Dashboard')
         
-        if pagina_actual == '🏠 Inicio':
+        if pagina_actual == '📊 Dashboard':
             st.info("""
-            **🏠 Página de Inicio**
+            **📊 Dashboard Principal**
             
-            • Ver estado del pipeline
-            • Cargar nuevos datos
-            • Navegación guiada
-            """)
-        
-        elif pagina_actual == '📊 Dashboard':
-            st.info("""
-            **📊 Dashboard Analítico**
-            
-            • Métricas principales
-            • Gráficos temporales
-            • Heatmaps de patrones
-            • Predicciones IA
+            • Estado del pipeline
+            • Métricas principales  
+            • Gráficos y predicciones
+            • Análisis interactivo
             """)
         
         elif pagina_actual == '🔧 Preparación de Datos':
@@ -1490,10 +1310,9 @@ def main():
             pagina_default = st.session_state.navegacion_objetivo
             st.session_state.navegacion_objetivo = None  # Reset
         else:
-            pagina_default = "🏠 Inicio"
+            pagina_default = "📊 Dashboard"
         
         opciones_navegacion = [
-            "🏠 Inicio", 
             "📊 Dashboard", 
             "🔧 Preparación de Datos",
             "🇨🇱 Feriados Chilenos",
@@ -1526,13 +1345,45 @@ def main():
     mostrar_ayuda_contextual()
     
     # Mostrar contenido según la página
-    if pagina == "🏠 Inicio":
-        mostrar_pagina_inicio()
-    elif pagina == "📊 Dashboard":
+    if pagina == "📊 Dashboard":
         if st.session_state.pipeline_completado:
             mostrar_dashboard()
         else:
-            st.warning("⚠️ Ejecuta el pipeline primero para ver el dashboard")
+            # Mostrar página principal con pipeline cuando no hay resultados
+            st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 15px;
+                text-align: center;
+                margin-bottom: 20px;
+            ">
+                <h1 style="margin: 0; font-size: 2.5rem;">📞 CEAPSI</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Sistema de Predicción Inteligente de Llamadas</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Mostrar estado del pipeline
+            mostrar_progreso_pipeline()
+            
+            # Si hay datos cargados, mostrar botón para ejecutar pipeline
+            if st.session_state.get('datos_cargados', False) and st.session_state.get('archivo_datos'):
+                st.markdown("---")
+                st.subheader("🚀 Ejecutar Análisis")
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.info("📁 **Datos cargados correctamente.** Ejecuta el pipeline para ver predicciones y análisis detallados.")
+                with col2:
+                    if st.button("🚀 Ejecutar Pipeline", type="primary", use_container_width=True, key="dashboard_pipeline_btn"):
+                        processor = PipelineProcessor(st.session_state.archivo_datos)
+                        if processor.ejecutar_pipeline_completo():
+                            st.success("🎉 Pipeline completado exitosamente!")
+                            st.rerun()
+            else:
+                st.markdown("---")
+                st.info("📁 **Comienza aquí:** Carga un archivo de datos usando el panel lateral para ver análisis y predicciones.")
     elif pagina == "🔧 Preparación de Datos":
         if PREP_DATOS_AVAILABLE:
             mostrar_preparacion_datos()
