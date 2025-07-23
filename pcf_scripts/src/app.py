@@ -21,8 +21,11 @@ import plotly.graph_objects as go
 
 # Fix para imports locales
 current_dir = Path(__file__).parent.absolute()
+project_root = current_dir.parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Suprimir warnings menores
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
@@ -40,7 +43,7 @@ logger = logging.getLogger('CEAPSI_APP')
 
 # Importar autenticación Supabase EXCLUSIVAMENTE
 try:
-    from supabase_auth import SupabaseAuthManager
+    from auth.supabase_auth import SupabaseAuthManager
     from dotenv import load_dotenv
     load_dotenv()  # Cargar variables de entorno
     SUPABASE_AUTH_AVAILABLE = True
@@ -51,44 +54,44 @@ except ImportError as e:
 
 # Importar módulos del sistema con manejo de errores
 try:
-    from dashboard_comparacion import DashboardValidacionCEAPSI
+    from ui.dashboard_comparacion import DashboardValidacionCEAPSI
     DASHBOARD_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar dashboard_comparacion: {e}")
     DASHBOARD_AVAILABLE = False
 
 try:
-    from preparacion_datos import mostrar_preparacion_datos
+    from core.preparacion_datos import mostrar_preparacion_datos
     PREP_DATOS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar preparacion_datos: {e}")
     PREP_DATOS_AVAILABLE = False
 
 try:
-    from optimizacion_hiperparametros import mostrar_optimizacion_hiperparametros
+    from models.optimizacion_hiperparametros import mostrar_optimizacion_hiperparametros
     HYPEROPT_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar optimizacion_hiperparametros: {e}")
     HYPEROPT_AVAILABLE = False
 
 try:
-    from modulo_estado_reservo import mostrar_estado_reservo
+    from api.modulo_estado_reservo import mostrar_estado_reservo
     ESTADO_RESERVO_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar modulo_estado_reservo: {e}")
     ESTADO_RESERVO_AVAILABLE = False
 
 try:
-    from setup_audit_integration import initialize_audit_system, show_audit_status
+    from audit.setup_audit_integration import initialize_audit_system, show_audit_status
     AUDIT_INTEGRATION_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"No se pudo importar setup_audit_integration: {e}")
     AUDIT_INTEGRATION_AVAILABLE = False
 
 try:
-    from feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
+    from utils.feriados_chilenos import mostrar_analisis_feriados_chilenos, GestorFeriadosChilenos
     try:
-        from feriados_chilenos import mostrar_analisis_cargo_feriados
+        from utils.feriados_chilenos import mostrar_analisis_cargo_feriados
         CARGO_ANALYSIS_AVAILABLE = True
     except ImportError:
         CARGO_ANALYSIS_AVAILABLE = False
