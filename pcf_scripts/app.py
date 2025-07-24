@@ -30,15 +30,33 @@ if str(current_dir) not in sys.path:
 # Suprimir warnings menores
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
 
-# Configurar logging consolidado
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/ceapsi_app.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+# Configurar logging consolidado compatible con Streamlit Cloud
+def setup_logging():
+    """Configurar logging según el entorno de deployment"""
+    handlers = [logging.StreamHandler()]  # Siempre tener console logging
+    
+    # Solo intentar file logging si no estamos en Streamlit Cloud
+    try:
+        if not os.path.exists('/mount/src'):  # No estamos en Streamlit Cloud
+            # Crear directorio logs si no existe
+            logs_dir = Path('logs')
+            logs_dir.mkdir(exist_ok=True)
+            handlers.append(logging.FileHandler('logs/ceapsi_app.log', encoding='utf-8'))
+        else:
+            # En Streamlit Cloud, solo usar console logging
+            pass
+    except Exception:
+        # Si hay algún error, solo usar console logging
+        pass
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=handlers,
+        force=True  # Forzar reconfiguración
+    )
+
+setup_logging()
 logger = logging.getLogger('CEAPSI_APP')
 
 # Importar autenticación Supabase EXCLUSIVAMENTE
