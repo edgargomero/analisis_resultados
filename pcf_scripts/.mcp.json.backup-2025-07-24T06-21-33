@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "memory-bank": {
+      "name": "Memory Bank MCP",
+      "description": "Centralized memory system for AI agents",
+      "command": "server-memory",
+      "args": [],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "name": "Sequential Thinking MCP",
+      "description": "Helps LLMs decompose complex tasks into logical steps",
+      "command": "code-reasoning",
+      "args": [],
+      "env": {}
+    },
+    "deep-graph": {
+      "name": "Deep Graph MCP (Code Graph)",
+      "description": "Transforms source code into semantic graphs via DeepGraph",
+      "command": "mcp-code-graph",
+      "args": [],
+      "env": {}
+    },
+    "supabase": {
+      "name": "Supabase MCP Server",
+      "description": "Connect directly to Supabase for database operations",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}",
+        "SUPABASE_PROJECT_REF": "${SUPABASE_PROJECT_REF}"
+      }
+    }
+  }
+}
