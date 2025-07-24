@@ -621,6 +621,19 @@ class SistemaMultiModeloCEAPSI:
         print(f"   📊 Promedio: {df_predicciones['yhat_ensemble'].mean():.1f} llamadas/día")
         print(f"   📈 Rango: {df_predicciones['yhat_ensemble'].min():.1f} - {df_predicciones['yhat_ensemble'].max():.1f}")
         
+        # Validar que las fechas sean futuras respecto a los datos históricos
+        fecha_limite_historica = df['ds'].max()
+        fecha_primera_prediccion = df_predicciones['ds'].min()
+        
+        if fecha_primera_prediccion <= fecha_limite_historica:
+            print(f"⚠️ ADVERTENCIA: Las predicciones se solapan con datos históricos")
+            print(f"   Último histórico: {fecha_limite_historica.date()}")
+            print(f"   Primera predicción: {fecha_primera_prediccion.date()}")
+        else:
+            print(f"✅ Separación temporal correcta:")
+            print(f"   Último histórico: {fecha_limite_historica.date()}")
+            print(f"   Primera predicción: {fecha_primera_prediccion.date()}")
+        
         return df_predicciones
     
     def detectar_alertas_avanzadas(self, df_predicciones, df_historico):

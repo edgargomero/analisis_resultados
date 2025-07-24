@@ -286,16 +286,29 @@ class DashboardValidacionCEAPSI:
         
         # Agregar datos históricos si están disponibles
         if df_historico is not None:
+            # Filtrar históricos para que no se solapen con predicciones
+            fecha_limite = df_predicciones['ds'].min() - timedelta(days=1)
+            df_hist_filtrado = df_historico[df_historico['ds'] <= fecha_limite]
+            
             fig.add_trace(
                 go.Scatter(
-                    x=df_historico['ds'],
-                    y=df_historico['y'],
+                    x=df_hist_filtrado['ds'],
+                    y=df_hist_filtrado['y'],
                     mode='lines',
                     name='Histórico Real',
                     line=dict(color='black', width=2),
                     opacity=0.7
                 ),
                 row=1, col=1
+            )
+            
+            # Agregar línea vertical separadora
+            fig.add_vline(
+                x=fecha_limite,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="Inicio Predicciones",
+                annotation_position="top"
             )
         
         # Agregar predicciones de cada modelo

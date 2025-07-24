@@ -15,7 +15,9 @@ try:
     AUDIT_AVAILABLE = True
 except ImportError:
     AUDIT_AVAILABLE = False
-    print("⚠️ Sistema de auditoría no disponible")
+    # Use logging instead of print to avoid encoding issues
+    import logging
+    logging.info("Sistema de auditoria no disponible")
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)

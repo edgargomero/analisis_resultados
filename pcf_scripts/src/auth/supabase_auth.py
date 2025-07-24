@@ -23,10 +23,18 @@ class SupabaseAuthManager:
         # Intentar obtener de Streamlit secrets primero, luego de env vars
         if hasattr(st, 'secrets') and 'SUPABASE_URL' in st.secrets:
             self.supabase_url = st.secrets['SUPABASE_URL']
-            self.supabase_key = st.secrets['SUPABASE_KEY']
+            # Frontend debe usar ANON KEY, no service role key
+            self.supabase_key = st.secrets.get('SUPABASE_ANON_KEY') or st.secrets.get('SUPABASE_KEY')
         else:
             self.supabase_url = os.getenv('SUPABASE_URL')
-            self.supabase_key = os.getenv('SUPABASE_KEY')
+            # Prioritizar anon key para frontend
+            self.supabase_key = os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY')
+        
+        # Validar que no estamos usando service role key en frontend
+        if self.supabase_key and len(self.supabase_key) > 200:
+            logger.warning("⚠️ PELIGRO: Frontend está usando service role key, debería usar anon key")
+        elif self.supabase_key and "anon" not in self.supabase_key:
+            logger.info("Usando key de Supabase para frontend")
         
         self.supabase: Client = None
         

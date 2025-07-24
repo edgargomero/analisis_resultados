@@ -38,6 +38,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+!logs/.gitkeep
 
 # Data files (sensitive)
 *.csv
@@ -79,12 +80,15 @@ legacy/
 *.backup
 
 # Development scripts
-complete_debug.py
-final_check.py
-fix_ceapsi.py
-start_ceapsi.py
-verify_ceapsi.py
-debug/
+scripts/development/
+!scripts/development/.gitkeep
+
+# Database migrations (keep structure)
+!database/migrations/
+!database/migrations/*.sql
+
+# Documentation - keep structure
+!docs/
 
 # Batch and shell files
 *.bat
